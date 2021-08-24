@@ -41,28 +41,28 @@ class TestPyDependence:
 
     def test_raise_error_when_omit_internal_imports_and_path_is_file(
         self,
-        set_up_py_file: Callable[[str, str], str],
+        set_up_file: Callable,
     ) -> None:
         """
         Validate if RequiredBaseDirError is raised when is the path provided is a file
         and the config option omit_internal_imports is True
         Args:
-            set_up_py_file: Dynamic fixture to create .py test file
+            set_up_file: Dynamic fixture to create .py test file
         """
-        file_path = set_up_py_file(self.IMPORT_TEST_CASE, "py")
+        file_path = set_up_file(self.IMPORT_TEST_CASE, "py")
         dep = self.entry_point(omit_internal_imports=True)
         with pytest.raises(RequiredBaseDirError):
             dep.get_imports(file_path)
 
     def test_raise_error_when_the_path_is_not_py_file(
         self,
-        set_up_py_file: Callable[[str, str], str],
+        set_up_file: Callable,
     ) -> None:
         """
         Validate if WrongFileExtension is raised when is the path provided is a file
         if an extension different to .py
         """
-        file_path = set_up_py_file(self.IMPORT_TEST_CASE, "toml")
+        file_path = set_up_file(self.IMPORT_TEST_CASE, "toml")
         dep = self.entry_point(omit_internal_imports=True)
         with pytest.raises(WrongFileExtension):
             dep.get_imports(file_path)
