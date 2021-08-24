@@ -7,6 +7,7 @@ import shutil
 from typing import Any, Dict, List, NoReturn, Optional, Tuple, Union
 
 from git import Repo
+
 from pydep.ast_analyzers import AstImportAnalyzer
 from pydep.exceptions import RequiredBaseDirError, WrongFileExtension
 
@@ -62,12 +63,19 @@ class PyDependence:
             raise WrongFileExtension("The file path provided must be .py")
 
         if self.omit_internal_imports:
-            if os.path.isfile(path) and not self.base_dir:
-                raise RequiredBaseDirError(
-                    "if the option to omit internal imports was provided, must be "
-                    "provided a base dir"
-                )
+            self.validate_omit_internal_imports(path)
+
         return True
+
+    def validate_omit_internal_imports(  # type: ignore[return]
+        self, path: str
+    ) -> Optional[NoReturn]:
+        """Validate omit internal imports config options"""
+        if os.path.isfile(path) and not self.base_dir:
+            raise RequiredBaseDirError(
+                "If the option to omit internal imports was provided, must be "
+                "provided a base dir"
+            )
 
     def _define_defaults(self, path: str) -> None:
         """Define default variables that the used does not provided
@@ -171,8 +179,8 @@ class PyDependence:
             Dict: The imports found in the directory or files
         """
         imports = {}
+        self._define_defaults(path)
         if self.is_valid(path):
-            self._define_defaults(path)
             if os.path.isdir(path):
                 imports = self._process_dir(path)
             else:
@@ -188,12 +196,11 @@ class PyGitDependence(PyDependence):
     def __init__(
         self,
         git_url: str,
-        commit_id: str = "None",
-        path: str = "",
-        branch: str = "",
+        commit_id: Optional[str] = None,
+        branch: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
-        """Parse imports found in the context of the repository
+        """Parse imports in the context of a git repository
         Args:
             git_url: Git url of the repository to analyze
             commit_id: Hash id to parse a specific context on git timeline
@@ -206,9 +213,6 @@ class PyGitDependence(PyDependence):
                            omitted
             omit_internal_imports: Bool to define if will be omitted the imports that make
                                   relation to any own package
-        Note:
-            If a git url and directory/file path was provided, the parse will be executed
-            over the directory/file inside the git context.
 
         Examples:
                 1. Parse imports in an repository
@@ -233,18 +237,31 @@ class PyGitDependence(PyDependence):
         """
 
         self.git_url: str = git_url
-        self.branch: str = branch
-        self.commit_id: str = commit_id
-        self.path: str = path
+        self.branch: Optional[str] = branch
+        self.commit_id: Optional[str] = commit_id
 
         self.repository_name = self.git_url.split("/")[-1]
         self.repo = self.clone_and_check_out()
-        self.path = self.repo.working_dir if not self.path else self.path
-
-        if not branch:
-            logger.info("The default branch %s was selected", self.repo.active_branch)
 
         super().__init__(**kwargs)
+
+    def validate_omit_internal_imports(self, path: str) -> Optional[NoReturn]:
+        """Validate omit_internal_imports config options in git context"""
+
+    def _define_defaults(self, path: str) -> None:
+        """Define default variables that the used does not provided
+        Args:
+            path: directory/file to process
+        """
+        if not self.base_dir:
+            self.base_dir = self.repo.working_dir
+            logger.info("default base dir: %s", self.base_dir)
+
+        if not self.branch:
+            self.branch = self.repo.active_branch
+            logger.info(
+                "The default branch %s selected by default", self.repo.active_branch
+            )
 
     def clone_and_check_out(self) -> Repo:
         """Clone a checkout
@@ -264,18 +281,29 @@ class PyGitDependence(PyDependence):
             repo.git.checkout(self.commit_id)
         return repo
 
-    def delete_repository(self) -> None:
+    @staticmethod
+    def delete_repository(path: str) -> None:
         """delete the repository dir"""
         try:
-            shutil.rmtree(self.path)
+            shutil.rmtree(path)
         except OSError:
             logger.exception("Error during repository deletion")
 
-    def parse_imports(self) -> Union[NoReturn, Dict[Any, Any], None]:
-        """Get the imports in the context provided
+    def get_imports(  # type: ignore[override]
+        self, path: str = ""
+    ) -> Union[NoReturn, Dict[Any, Any], None]:
+        """Get the imports in the git context
         Returns:
             Dict: all the import found in the file or files
+
+        Note:
+            If the path is not provided will the parse imports will be executed over
+            all the repository.
         """
-        imports = super().get_imports(self.path)
-        self.delete_repository()
+        if not path:
+            path = self.repo.working_dir
+            logger.info("Will be parse the entire repository")
+
+        imports = super().get_imports(path)
+        self.delete_repository(path)
         return imports
