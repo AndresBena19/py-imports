@@ -291,7 +291,7 @@ class PyGitDependence(PyDependence):
 
     def get_imports(  # type: ignore[override]
         self, path: str = ""
-    ) -> Union[NoReturn, Dict[Any, Any], None]:
+    ) -> Union[NoReturn, Dict]:
         """Get the imports in the git context
         Returns:
             Dict: all the import found in the file or files
