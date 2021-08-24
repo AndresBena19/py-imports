@@ -1,9 +1,9 @@
 """Integration test cases to validate the properly parse of python imports"""
 from typing import Callable, Dict, List
 
+from git import Repo
 from pytest_mock import MockFixture
 
-from git import Repo
 from py._path.local import LocalPath
 
 from pydep.py_dependency import PyDependence, PyGitDependence

@@ -3,7 +3,6 @@ import os
 from typing import Callable
 
 import pytest
-
 from git import Repo
 
 
