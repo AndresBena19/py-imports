@@ -2,9 +2,7 @@
 from typing import Dict, List, NoReturn, Optional
 
 
-def validate_flask_import(  # type: ignore[return]
-    imports: Dict, file_path: str
-) -> Optional[NoReturn]:
+def validate_flask_import(imports: Dict, file_path: str) -> Optional[NoReturn]:
     """
     Validate if the information about the next import are properly parses
 

@@ -56,7 +56,7 @@ class PyDependence:
         self.base_dir: str = kwargs.get("base_dir", "")
         self.builtins = None
 
-    def is_valid(self, path: str) -> Union[NoReturn, bool]:  # type: ignore[return]
+    def is_valid(self, path: str) -> Union[NoReturn, bool]:
         """Validate if the configuration provided has all the required parameters"""
 
         if os.path.isfile(path) and not path.endswith(".py"):
@@ -67,9 +67,7 @@ class PyDependence:
 
         return True
 
-    def validate_omit_internal_imports(  # type: ignore[return]
-        self, path: str
-    ) -> Optional[NoReturn]:
+    def validate_omit_internal_imports(self, path: str) -> Optional[NoReturn]:
         """Validate omit internal imports config options"""
         if os.path.isfile(path) and not self.base_dir:
             raise RequiredBaseDirError(
