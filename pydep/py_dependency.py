@@ -1,6 +1,6 @@
 """Core feature to get imports"""
 import ast
-import importlib.machinery
+import copy
 import logging
 import os
 import shutil
@@ -10,12 +10,13 @@ from git import Repo
 
 from pydep.ast_analyzers import AstImportAnalyzer
 from pydep.exceptions import RequiredBaseDirError, WrongFileExtension
+from pydep.mixins import InternalPackagesMixin
 
 
 logger = logging.getLogger(__name__)
 
 
-class PyDependence:
+class PyDependence(InternalPackagesMixin):
     """
     Parse and capture every import data statement in a directory, file
     """
@@ -53,8 +54,12 @@ class PyDependence:
                     dep.get_imports()
         """
         self.omit_internal_imports: Optional[bool] = kwargs.get("omit_internal_imports")
+        self.omit_unused_imports: Optional[bool] = kwargs.get("omit_unused_imports")
+
         self.base_dir: str = kwargs.get("base_dir", "")
-        self.builtins = None
+        self.builtins: List = []
+        self.internal_pkg: List = []
+        self.root_modules: List = []
 
     def is_valid(self, path: str) -> Union[NoReturn, bool]:
         """Validate if the configuration provided has all the required parameters"""
@@ -82,7 +87,14 @@ class PyDependence:
         """
         if os.path.isdir(path) and not self.base_dir:
             self.base_dir = path
-            logger.info("default base dir: %s", self.base_dir)
+        elif os.path.isfile(path):
+            self.base_dir = os.path.dirname(os.path.realpath(path))
+
+        logger.info("default base dir: %s", self.base_dir)
+
+        if self.omit_internal_imports:
+            self.internal_pkg = self.get_internal_packages(self.base_dir)
+            self.root_modules = self.get_root_modules(self.base_dir)
 
     @staticmethod
     def get_ast_imports(path_file: str) -> Tuple[List[str], Dict]:
@@ -99,32 +111,21 @@ class PyDependence:
             analyzer.visit(tree)
         return analyzer.imports, analyzer.imports_from
 
-    def _clean_packages(self, imports: List) -> List:
+    def _clean_imports(self, imports: List, imports_from: Dict) -> Tuple:
         """
         Clean the imports parse base in the flag provided
         Args:
             imports: List of the imports
         """
-        clean_imports = []
-        for package in imports:
+        absolute_imports = copy.deepcopy(imports_from.get("absolute_imports", {}))
+        for import_stm, _ in absolute_imports.items():
             if self.omit_internal_imports:
-                if not self._is_internal_package(package):
-                    clean_imports.append(package)
+                if self.is_internal_package(
+                    import_stm, self.internal_pkg, self.root_modules
+                ):
+                    imports_from["absolute_imports"].pop(import_stm)
 
-        return clean_imports
-
-    def _is_internal_package(self, module: str) -> bool:
-        """
-        Validate if the module provided belong to a local module in the project
-        Args:
-            module: Module to validate
-
-        Returns:
-            True ig the module is a local module present in the context of the
-            parsed file, otherwise false
-        """
-        spec = importlib.machinery.PathFinder.find_spec(module, [self.base_dir])
-        return bool(spec)
+        return imports, imports_from
 
     def _process_py_files(self, files: List[str], root: str) -> Dict:
         """Parse the .py in the files found
@@ -152,10 +153,11 @@ class PyDependence:
 
         """
         imports, imports_from = self.get_ast_imports(path)
+        imports_cleaned, imports_from_cleaned = self._clean_imports(imports, imports_from)
         return {
             path: {
-                "imports": imports,
-                "imports_from": imports_from,
+                "imports": imports_cleaned,
+                "imports_from": imports_from_cleaned,
             }
         }
 

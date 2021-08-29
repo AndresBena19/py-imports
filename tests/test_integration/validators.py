@@ -7,7 +7,7 @@ def validate_flask_import(imports: Dict, file_path: str) -> Optional[NoReturn]:
     Validate if the information about the next import are properly parses
 
     Example:
-        import flask, keras
+        import flask
 
     Args:
         imports: Dict with the data import parse from a file
