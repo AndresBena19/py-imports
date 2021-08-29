@@ -86,7 +86,7 @@ class PyDependence(InternalPackagesMixin, UnUsedImportMixin):
         """
         if os.path.isdir(path) and not self.base_dir:
             self.base_dir = path
-        elif os.path.isfile(path):
+        elif os.path.isfile(path) and not self.base_dir:
             self.base_dir = os.path.dirname(os.path.realpath(path))
 
         logger.info("default base dir: %s", self.base_dir)
@@ -263,6 +263,7 @@ class PyGitDependence(PyDependence):
             logger.info(
                 "The default branch %s selected by default", self.repo.active_branch
             )
+        super()._define_defaults(path)
 
     def clone_and_check_out(self) -> Repo:
         """Clone a checkout
