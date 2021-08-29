@@ -1,6 +1,5 @@
 """Core feature to get imports"""
 import ast
-import copy
 import logging
 import os
 import shutil
@@ -58,7 +57,7 @@ class PyDependence(InternalPackagesMixin, UnUsedImportMixin):
 
         self.base_dir: str = kwargs.get("base_dir", "")
         self.builtins: List = []
-        self.internal_pkg: List = []
+        self.internal_pkgs: List = []
         self.root_modules: List = []
 
     def is_valid(self, path: str) -> Union[NoReturn, bool]:
@@ -93,7 +92,7 @@ class PyDependence(InternalPackagesMixin, UnUsedImportMixin):
         logger.info("default base dir: %s", self.base_dir)
 
         if self.omit_internal_imports:
-            self.internal_pkg = self.get_internal_packages(self.base_dir)
+            self.internal_pkgs = self.get_internal_packages(self.base_dir)
             self.root_modules = self.get_root_modules(self.base_dir)
 
     @staticmethod
@@ -113,20 +112,17 @@ class PyDependence(InternalPackagesMixin, UnUsedImportMixin):
 
     def _clean_imports(self, imports: List, imports_from: Dict, path: str) -> Tuple:
         """
-        Clean the imports parse base in the flag provided
+        Clean the imports parsed base in the flags config provided
         Args:
             imports: List of the imports
         """
         if self.omit_unused_imports:
             self.clean_unused_imports(imports, imports_from, path)
 
-        absolute_imports = copy.deepcopy(imports_from.get("absolute_imports", {}))
-        for import_stm, _ in absolute_imports.items():
-            if self.omit_internal_imports:
-                if self.is_internal_package(
-                    import_stm, self.internal_pkg, self.root_modules
-                ):
-                    imports_from["absolute_imports"].pop(import_stm)
+        if self.omit_internal_imports:
+            self.clean_internal_imports(
+                imports_from, self.internal_pkgs, self.root_modules
+            )
 
         return imports, imports_from
 
