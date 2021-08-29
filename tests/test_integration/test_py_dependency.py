@@ -147,12 +147,12 @@ class TestPyDependence:
         imports = handler.get_imports(main_file_path)
         validate_flask_import(imports, main_file_path)
 
-    def test_get_import_without_unused_imports(
+    def test_get_import_without_unused_imports_when_absolute_imports(
         self,
         set_up_file: Callable,
     ) -> None:
         """
-        Validate if the imports that are not used in the .py are excluded
+        Validate if the absolute imports that are not used in the .py are excluded
         Args:
             set_up_file: Dynamic fixture to create .py test file
 
@@ -160,6 +160,9 @@ class TestPyDependence:
             Test case:
                 import django
                 from x import flask, keras
+                ...
+
+                keras()
 
         Expected results:
             * django and x.flask must be excluded because they are not used in the file
@@ -179,6 +182,37 @@ class TestPyDependence:
         assert imports_from, "Data of import_from no returned"
         assert imports_from.get("relative_imports") == []
         assert imports_from.get("absolute_imports", {}).get("x")
+
+    def test_get_import_without_unused_imports_when_relative_imports(
+        self,
+        set_up_file: Callable,
+    ) -> None:
+        """
+        Validate if the relative imports that are not used in the .py are excluded
+        Args:
+            set_up_file: Dynamic fixture to create .py test file
+
+        Notes:
+            Test case:
+                from .x import flask, keras
+                keras()
+
+        Expected results:
+            * Must be exclude flask from the relative imports because it's not used
+            * Must be found just one relative import
+            * Must be found keras as the only relative import used
+        """
+        file_path = set_up_file("""from .x import flask, keras\nkeras()""")
+        handler = self.entry_point(omit_unused_imports=True)
+        imports: Dict = handler.get_imports(file_path)
+        file_imports = imports.get(file_path, {})
+
+        imports_from: Dict = file_imports.get("imports_from")
+        assert imports_from, "Data of import_from no returned"
+        relative_imports = imports_from.get("relative_imports")
+        assert relative_imports, "Missing relative imports"
+        assert len(relative_imports) == 1
+        assert relative_imports[0].get("imports") == ["keras"]
 
 
 class TestPyGitDependence:
