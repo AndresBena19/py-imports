@@ -6,7 +6,7 @@ from unittest.mock import call
 import pytest
 from pytest_mock import MockerFixture
 
-from pydep.exceptions import RequiredBaseDirError, WrongFileExtension
+from pydep.exceptions import WrongFileExtension
 from pydep.py_dependency import PyDependence
 
 
@@ -38,21 +38,6 @@ class TestPyDependence:
 
         assert dep.base_dir == tmpdir, f"The base_dir expected is: {tmpdir}"
         logger_mock.info.assert_called_with("default base dir: %s", tmpdir)
-
-    def test_raise_error_when_omit_internal_imports_and_path_is_file(
-        self,
-        set_up_file: Callable,
-    ) -> None:
-        """
-        Validate if RequiredBaseDirError is raised when is the path provided is a file
-        and the config option omit_internal_imports is True
-        Args:
-            set_up_file: Dynamic fixture to create .py test file
-        """
-        file_path = set_up_file(self.IMPORT_TEST_CASE, "py")
-        dep = self.entry_point(omit_internal_imports=True)
-        with pytest.raises(RequiredBaseDirError):
-            dep.get_imports(file_path)
 
     def test_raise_error_when_the_path_is_not_py_file(
         self,
