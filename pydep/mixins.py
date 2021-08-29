@@ -1,6 +1,113 @@
 """Mixins"""
+import ast
+import copy
 import os
-from typing import List
+import textwrap
+from typing import Dict, Iterable, List, Tuple
+
+from pyflakes import checker
+from pyflakes.messages import UnusedImport
+
+
+class UnUsedImportMixin:
+    """
+    Mixin that provide features to validate if an import was used in the file
+    """
+
+    @staticmethod
+    def get_unused_import(file_path: str) -> List:
+        """
+        Get modules of packages not used but was imported
+        Args:
+            file_path: File path to analyze
+
+        Returns:
+                List of the packages/modules not used in the file
+        """
+        unused = []
+        with open(file_path, "r", encoding="utf-8") as file:
+            data = file.read()
+            tree = ast.parse(data)
+            file_tokens = checker.make_tokens(textwrap.dedent(data))
+
+        analysis_result = checker.Checker(tree, file_tokens=file_tokens)
+        for alert in analysis_result.messages:
+            if isinstance(alert, UnusedImport):
+                unused.append(alert.message_args[0])
+        return unused
+
+    def clean_unused_imports(self, imports: List, import_from: Dict, path: str) -> Tuple:
+        """
+        Filter and exclude unused imports from the report get it in the imports
+        and imports from variables
+        Args:
+            imports: Imports with the schema "import x,y,z, found
+            import_from: Imports withe the schema "from x import y, z found
+            path: Path of the file
+
+        Returns:
+            The same objects provided but without the unused imports
+        """
+        unused_imports = self.get_unused_import(path)
+        unused_without_from = filter(lambda imp: "." not in imp, unused_imports)
+        unused_with_from = filter(lambda imp: "." in imp, unused_imports)
+
+        self.clean_import_without_from(imports, unused_without_from)
+        self.clean_absolute_imports(import_from, unused_with_from)
+        return imports, import_from
+
+    @staticmethod
+    def clean_import_without_from(imports: List, unused_without_from: Iterable) -> List:
+        """
+        Filter an exclude unused imports from imports statement that dont used from prefix
+        Args:
+            imports: Imports with the schema "import x,y,z, found
+            unused_without_from: Unused imports found in the file
+
+        Returns:
+            The same objects "import· provided but without the unused imports
+
+        """
+        for index, import_ in enumerate(copy.deepcopy(imports)):
+            imports_without_from = import_.get("imports")
+            used_imports = list(
+                filter(lambda pkg: pkg not in unused_without_from, imports_without_from)
+            )
+            if used_imports:
+                import_["imports"] = used_imports
+            else:
+                # If it's not found data, all the record and his metadata is deleted
+                del imports[index]
+
+    @staticmethod
+    def clean_absolute_imports(import_from: Dict, unused_with_from: Iterable) -> Dict:
+        """
+        Filter an exclude unused imports from absolute imports found
+        Args:
+            unused_with_from: Unused imports found in the file
+            import_from: Imports with the schema "from x import y, z found
+
+        Returns:
+            The same objects "import_from· provided but without the unused imports
+
+        """
+        absolute_imports = copy.deepcopy(import_from.get("absolute_imports", {}))
+        for package, metadata in absolute_imports.items():
+            package_dot_notation = [
+                f"{package}.{module}" for module in metadata.get("imports")
+            ]
+            used_imports_from = list(
+                filter(lambda pkg: pkg not in unused_with_from, package_dot_notation)
+            )
+
+            if not used_imports_from:
+                # If any module of implementation is used, all the import is exclude from
+                # the dict
+                del import_from["absolute_imports"][package]
+            else:
+                import_from["absolute_imports"][package]["imports"] = used_imports_from
+
+        return import_from
 
 
 class InternalPackagesMixin:
@@ -61,7 +168,7 @@ class InternalPackagesMixin:
         """
         # pylint: disable=fixme
         # Todo this validation must be optimized base in the other possibilities to import
-        #  a own package in the project
+        #  an own package in the project
         import_ = import_stm.split(".")[0]
         result_pkg = filter(lambda pkg: pkg.get("pkg") == import_, internal_packages)
         result_modules = filter(lambda module: import_ == module, root_modules)
