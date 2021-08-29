@@ -10,13 +10,13 @@ from git import Repo
 
 from pydep.ast_analyzers import AstImportAnalyzer
 from pydep.exceptions import RequiredBaseDirError, WrongFileExtension
-from pydep.mixins import InternalPackagesMixin
+from pydep.mixins import InternalPackagesMixin, UnUsedImportMixin
 
 
 logger = logging.getLogger(__name__)
 
 
-class PyDependence(InternalPackagesMixin):
+class PyDependence(InternalPackagesMixin, UnUsedImportMixin):
     """
     Parse and capture every import data statement in a directory, file
     """
@@ -111,12 +111,15 @@ class PyDependence(InternalPackagesMixin):
             analyzer.visit(tree)
         return analyzer.imports, analyzer.imports_from
 
-    def _clean_imports(self, imports: List, imports_from: Dict) -> Tuple:
+    def _clean_imports(self, imports: List, imports_from: Dict, path: str) -> Tuple:
         """
         Clean the imports parse base in the flag provided
         Args:
             imports: List of the imports
         """
+        if self.omit_unused_imports:
+            self.clean_unused_imports(imports, imports_from, path)
+
         absolute_imports = copy.deepcopy(imports_from.get("absolute_imports", {}))
         for import_stm, _ in absolute_imports.items():
             if self.omit_internal_imports:
@@ -153,7 +156,9 @@ class PyDependence(InternalPackagesMixin):
 
         """
         imports, imports_from = self.get_ast_imports(path)
-        imports_cleaned, imports_from_cleaned = self._clean_imports(imports, imports_from)
+        imports_cleaned, imports_from_cleaned = self._clean_imports(
+            imports, imports_from, path
+        )
         return {
             path: {
                 "imports": imports_cleaned,

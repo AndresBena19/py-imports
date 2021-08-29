@@ -122,8 +122,7 @@ class TestPyDependence:
         py_package: Tuple,
     ) -> None:
         """
-        Validate if the imports without from statements in a .py file are
-        properly parse
+        Validate if the imports that make reference to an internal package are excluded
         Args:
             py_package: Fixture to instantiate a python package scenario
 
@@ -137,7 +136,6 @@ class TestPyDependence:
                 from module1 import django
                 import flask
 
-
         Expected results:
             * Module1 must be excluded from the imports found
             * Must exist just one import in the file
@@ -148,6 +146,39 @@ class TestPyDependence:
         handler = self.entry_point(omit_internal_imports=True, base_dir=package_dir)
         imports = handler.get_imports(main_file_path)
         validate_flask_import(imports, main_file_path)
+
+    def test_get_import_without_unused_imports(
+        self,
+        set_up_file: Callable,
+    ) -> None:
+        """
+        Validate if the imports that are not used in the .py are excluded
+        Args:
+            set_up_file: Dynamic fixture to create .py test file
+
+        Notes:
+            Test case:
+                import django
+                from x import flask, keras
+
+        Expected results:
+            * django and x.flask must be excluded because they are not used in the file
+            * Any basic import or relative import must be found
+            * Must be returned just the package call "x" because the module/implementation
+              called keras was called
+        """
+        file_path = set_up_file("""import django\nfrom x import flask, keras\nkeras()""")
+        handler = self.entry_point(omit_unused_imports=True)
+        imports: Dict = handler.get_imports(file_path)
+        file_imports = imports.get(file_path)
+
+        assert file_imports, "Data no returned"
+        assert file_imports.get("imports", []) == []
+
+        imports_from: Dict = file_imports.get("imports_from", {})
+        assert imports_from, "Data of import_from no returned"
+        assert imports_from.get("relative_imports") == []
+        assert imports_from.get("absolute_imports", {}).get("x")
 
 
 class TestPyGitDependence:
