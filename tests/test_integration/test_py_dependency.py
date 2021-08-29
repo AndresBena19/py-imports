@@ -1,5 +1,6 @@
 """Integration test cases to validate the properly parse of python imports"""
-from typing import Callable, Dict, List
+import os
+from typing import Callable, Dict, List, Tuple
 
 from git import Repo
 from pytest_mock import MockFixture
@@ -15,7 +16,7 @@ class TestPyDependence:
     Test cases to validate the properly parse of imports in .py file
     """
 
-    entry_point = PyDependence()
+    entry_point = PyDependence
 
     def test_get_import_in_a_local_file(
         self,
@@ -39,8 +40,9 @@ class TestPyDependence:
               flask
             * The import must be placed in the first line
         """
-        file_path = set_up_file("""from flask import request""", "py")
-        imports: Dict = self.entry_point.get_imports(file_path)
+        file_path = set_up_file("""from flask import request""")
+        handler = self.entry_point()
+        imports: Dict = handler.get_imports(file_path)
 
         file_imports = imports.get(file_path)
 
@@ -77,8 +79,9 @@ class TestPyDependence:
             * Must exist just one module been imported equal to request
             * The import must be placed in the first line
         """
-        file_path = set_up_file("""from ... import request""", "py")
-        imports: Dict = self.entry_point.get_imports(file_path)
+        file_path = set_up_file("""from ... import request""")
+        handler = self.entry_point()
+        imports: Dict = handler.get_imports(file_path)
         file_imports = imports.get(file_path)
 
         assert file_imports, "Any import was found"
@@ -102,16 +105,49 @@ class TestPyDependence:
 
         Notes:
             Test case:
-                import flask, keras
+                import flask
 
         Expected results:
+            * Must exist just one import in the file
+            * Must exist just two module been imported from flask
+            * The import must be placed in the first line
+        """
+        file_path = set_up_file("""import flask""")
+        handler = self.entry_point()
+        imports: Dict = handler.get_imports(file_path)
+        validate_flask_import(imports, file_path)
+
+    def test_get_import_excluding_internal_imports(
+        self,
+        py_package: Tuple,
+    ) -> None:
+        """
+        Validate if the imports without from statements in a .py file are
+        properly parse
+        Args:
+            py_package: Fixture to instantiate a python package scenario
+
+        Notes:
+            This case is base in python package
+
+            File 1:
+                import django
+
+            File 2:
+                from module1 import django
+                import flask
+
+
+        Expected results:
+            * Module1 must be excluded from the imports found
             * Must exist just one import in the file
             * Must exist just two module been imported from flask and keras
             * The import must be placed in the first line
         """
-        file_path = set_up_file("""import flask""", "py")
-        imports: Dict = self.entry_point.get_imports(file_path)
-        validate_flask_import(imports, file_path)
+        package_dir, main_file_path = py_package
+        handler = self.entry_point(omit_internal_imports=True, base_dir=package_dir)
+        imports = handler.get_imports(main_file_path)
+        validate_flask_import(imports, main_file_path)
 
 
 class TestPyGitDependence:
@@ -128,7 +164,7 @@ class TestPyGitDependence:
     def test_get_imports_in_a_git_project(
         self,
         tmpdir: LocalPath,
-        set_up_file: Callable[[str, str, str], str],
+        set_up_file: Callable[[str, str], str],
         set_up_git_repository: Callable[[str, str], Repo],
         mocker: MockFixture,
     ) -> None:
@@ -145,7 +181,10 @@ class TestPyGitDependence:
             * Must exist just two module been imported from flask and keras
             * The import must be placed in the first line
         """
-        file_path = set_up_file("""import flask""", "py", tmpdir.strpath)
+
+        file_path = set_up_file(
+            """import flask""", os.path.join(tmpdir.strpath, "example.py")
+        )
         git_repository = set_up_git_repository(file_path, tmpdir.strpath)
 
         mocker.patch.object(
