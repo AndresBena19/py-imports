@@ -50,7 +50,12 @@ class AstImportAnalyzer(ast.NodeVisitor):
         imports: List[str] = [alias.name for alias in node.names]
         if node.level > 0:
             self._imports_from["relative_imports"].append(
-                {"level": node.level, "imports": imports, "line": node.lineno}
+                {
+                    "level": node.level,
+                    "imports": imports,
+                    "line": node.lineno,
+                    "module": node.module,
+                }
             )
 
         else:

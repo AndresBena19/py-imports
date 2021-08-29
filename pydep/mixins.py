@@ -54,10 +54,12 @@ class UnUsedImportMixin:
 
         self.clean_import_without_from(imports, unused_without_from)
         self.clean_absolute_imports(import_from, unused_with_from)
+        self.clean_relative_imports(import_from, unused_with_from)
+
         return imports, import_from
 
     @staticmethod
-    def clean_import_without_from(imports: List, unused_without_from: Iterable) -> List:
+    def clean_import_without_from(imports: List, unused_without_from: Iterable) -> None:
         """
         Filter an exclude unused imports from imports statement that dont used from prefix
         Args:
@@ -65,7 +67,7 @@ class UnUsedImportMixin:
             unused_without_from: Unused imports found in the file
 
         Returns:
-            The same objects "import· provided but without the unused imports
+            The same objects "imports" provided but without the unused imports
 
         """
         for index, import_ in enumerate(copy.deepcopy(imports)):
@@ -80,18 +82,14 @@ class UnUsedImportMixin:
                 del imports[index]
 
     @staticmethod
-    def clean_absolute_imports(import_from: Dict, unused_with_from: Iterable) -> Dict:
+    def clean_absolute_imports(imports_from: Dict, unused_with_from: Iterable) -> None:
         """
         Filter an exclude unused imports from absolute imports found
         Args:
             unused_with_from: Unused imports found in the file
-            import_from: Imports with the schema "from x import y, z found
-
-        Returns:
-            The same objects "import_from· provided but without the unused imports
-
+            imports_from: Imports with the schema "from x import y, z found
         """
-        absolute_imports = copy.deepcopy(import_from.get("absolute_imports", {}))
+        absolute_imports = copy.deepcopy(imports_from.get("absolute_imports", {}))
         for package, metadata in absolute_imports.items():
             package_dot_notation = [
                 f"{package}.{module}" for module in metadata.get("imports")
@@ -101,13 +99,38 @@ class UnUsedImportMixin:
             )
 
             if not used_imports_from:
-                # If any module of implementation is used, all the import is exclude from
+                # If any module of implementation is used, all the imports is exclude from
                 # the dict
-                del import_from["absolute_imports"][package]
+                del imports_from["absolute_imports"][package]
             else:
-                import_from["absolute_imports"][package]["imports"] = used_imports_from
+                transform_imports = [imp.split(".")[-1] for imp in used_imports_from]
+                imports_from["absolute_imports"][package]["imports"] = transform_imports
 
-        return import_from
+    @staticmethod
+    def clean_relative_imports(imports_from: Dict, unused_with_from: Iterable) -> None:
+        """
+         Filter an exclude unused imports from absolute imports found
+        Args:
+            imports_from: Imports with the schema "from .x import y, z found
+            unused_with_from: Unused imports found in the file
+        """
+        relative_imports = copy.deepcopy(imports_from.get("relative_imports", {}))
+        for index, metadata in enumerate(relative_imports):
+            main_module = metadata.get("module")
+            level = metadata.get("level")
+            package_dot_notation = [
+                f"{'.' * level}{main_module}.{module}"
+                for module in metadata.get("imports")
+            ]
+            rel_used_imports_from = list(
+                filter(lambda pkg: pkg not in unused_with_from, package_dot_notation)
+            )
+
+            if not rel_used_imports_from:
+                del imports_from["relative_imports"][index]
+            else:
+                transform_imports = [imp.split(".")[-1] for imp in rel_used_imports_from]
+                imports_from["relative_imports"][index]["imports"] = transform_imports
 
 
 class InternalPackagesMixin:
@@ -163,7 +186,7 @@ class InternalPackagesMixin:
             import_stm: Module to validate
 
         Returns:
-            True ig the module is a local module present in the context of the
+            True if the module is a local module present in the context of the
             parsed file, otherwise false
         """
         # pylint: disable=fixme
@@ -173,3 +196,21 @@ class InternalPackagesMixin:
         result_pkg = filter(lambda pkg: pkg.get("pkg") == import_, internal_packages)
         result_modules = filter(lambda module: import_ == module, root_modules)
         return bool(list(result_pkg)) or bool(list(result_modules))
+
+    def clean_internal_imports(
+        self,
+        imports_from: Dict,
+        internal_packages: List,
+        root_modules: List,
+    ) -> None:
+        """
+        Filter and exclude import that make reference to a internal package
+        Args:
+            imports_from: Imports with the schema "from x import y, z" found
+            root_modules: Root modules found base in the base dir defined
+            internal_packages: Internal packages of the project
+        """
+        absolute_imports = copy.deepcopy(imports_from.get("absolute_imports", {}))
+        for import_stm, _ in absolute_imports.items():
+            if self.is_internal_package(import_stm, internal_packages, root_modules):
+                imports_from["absolute_imports"].pop(import_stm)

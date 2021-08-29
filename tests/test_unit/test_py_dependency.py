@@ -41,13 +41,15 @@ class TestPyDependence:
 
     def test_raise_error_when_the_path_is_not_py_file(
         self,
+        tmpdir: str,
         set_up_file: Callable,
     ) -> None:
         """
         Validate if WrongFileExtension is raised when is the path provided is a file
         if an extension different to .py
         """
-        file_path = set_up_file(self.IMPORT_TEST_CASE, "toml")
+        path = os.path.join(tmpdir, "pyproject.toml")
+        file_path = set_up_file(self.IMPORT_TEST_CASE, path)
         dep = self.entry_point(omit_internal_imports=True)
         with pytest.raises(WrongFileExtension):
             dep.get_imports(file_path)
