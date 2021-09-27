@@ -1,6 +1,8 @@
 """ast classes to parse py files"""
 import ast
-from typing import Any, Dict, Iterator, List
+from typing import Any, Iterator, List
+
+from pydep.base import ImportsCollectionFile
 
 
 class AstImportAnalyzer(ast.NodeVisitor):
@@ -11,13 +13,10 @@ class AstImportAnalyzer(ast.NodeVisitor):
     # will be disable invalid-name alert in this class, because the builtin ast, does not
     # follow the snake_case format in his methods name
     # pylint: disable=C0103
-    def __init__(self) -> None:
+    def __init__(self, file_content: List[str]) -> None:
+        self.file_content = file_content
         super().__init__()
-        self._imports: List = []
-        self._imports_from: Dict = {
-            "relative_imports": [],
-            "absolute_imports": {},
-        }
+        self._imports_collector = ImportsCollectionFile()
 
     def visit_Import(self, node: ast.Import) -> Any:
         """
@@ -29,7 +28,12 @@ class AstImportAnalyzer(ast.NodeVisitor):
             import x, y, z
         """
         imports: List[str] = [pkg_name.name for pkg_name in node.names]
-        self._imports.append({"imports": imports, "line": node.lineno})
+
+        self._imports_collector.register_import(
+            line=node.lineno,
+            childes=imports,
+            statement=self.file_content[node.lineno - 1],
+        )
         self.generic_visit(node)
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> Any:
@@ -48,33 +52,19 @@ class AstImportAnalyzer(ast.NodeVisitor):
             to import the object
         """
         imports: List[str] = [alias.name for alias in node.names]
-        if node.level > 0:
-            self._imports_from["relative_imports"].append(
-                {
-                    "level": node.level,
-                    "imports": imports,
-                    "line": node.lineno,
-                    "module": node.module,
-                }
-            )
-
-        else:
-            self._imports_from["absolute_imports"][node.module] = {
-                "level": node.level,
-                "imports": imports,
-                "line": node.lineno,
-            }
+        self._imports_collector.register_import_from(
+            line=node.lineno,
+            childes=imports,
+            parent=node.module if node.module else "",
+            level=node.level,
+            statement=self.file_content[node.lineno - 1],
+        )
         self.generic_visit(node)
 
     @property
-    def imports(self) -> List[str]:
+    def imports_metadata(self) -> ImportsCollectionFile:
         """Get the import invoked with just statement import"""
-        return self._imports
-
-    @property
-    def imports_from(self) -> Dict:
-        """Get the import invoked with from and import statement"""
-        return self._imports_from
+        return self._imports_collector
 
 
 class SetupAnalyzer(ast.NodeVisitor):
