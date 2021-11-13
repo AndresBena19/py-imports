@@ -1,4 +1,7 @@
+"""Examples to parse import in a single file"""
+
 from py_imports.manager import PyImports
+
 
 # It's possible to get the data file by files
 with PyImports() as manager:
@@ -10,5 +13,3 @@ with PyImports() as manager:
     manager.get_imports("../examples/cases/module_file.py")
     manager.get_imports("../examples/cases/module_file_two.py")
     imports = manager.imports_resume()
-
-
