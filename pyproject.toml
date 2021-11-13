@@ -23,7 +23,7 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.7,<4.0"
-
+pyflakes = "2.4.0"
 
 [tool.poetry.dev-dependencies]
 bandit = "1.7.0"
