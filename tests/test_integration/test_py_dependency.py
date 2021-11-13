@@ -7,8 +7,8 @@ from pytest_mock import MockFixture
 
 from py._path.local import LocalPath
 
+from pydep.base.models import ImportsCollectionFile, ImportStatement
 from pydep.py_dependency import PyDependence, PyGitDependence
-from tests.test_integration.validators import validate_flask_import
 
 
 class TestPyDependence:
@@ -18,7 +18,7 @@ class TestPyDependence:
 
     entry_point = PyDependence
 
-    def test_get_import_in_a_local_file(
+    def test_get_absolute_import_in_a_local_file(
         self,
         set_up_file: Callable,
     ) -> None:
@@ -32,7 +32,7 @@ class TestPyDependence:
                 from flask import request
 
         Expected results:
-            * Must not exist any import without from
+            * Must not exist any relative import without from
             * The Import must be an absolute import, that mean the level is
               equals to 0
             * Must exist just one module been imported from flask
@@ -42,23 +42,19 @@ class TestPyDependence:
         """
         file_path = set_up_file("""from flask import request""")
         handler = self.entry_point()
-        imports: Dict = handler.get_imports(file_path)
+        imports: ImportsCollectionFile = handler.get_imports(file_path)
 
-        file_imports = imports.get(file_path)
+        assert imports, "Any import was found"
+        assert imports.absolute_imports, "Any absolute import was found"
 
-        assert file_imports, "Any import was found"
-        imports_statements_found: List[Dict] = file_imports.get("imports")
-        imports_from_statement_found: Dict = file_imports.get("imports_from")
-        absolute_import_found = imports_from_statement_found.get("absolute_imports")
+        absolute_import = imports.absolute_imports[0]
 
-        assert absolute_import_found, "Any absolute import was found"
-        imports_in_flask_package = absolute_import_found.get("flask")
-
-        assert len(imports_statements_found) == 0
-        assert imports_in_flask_package.get("level") == 0
-        assert len(imports_in_flask_package.get("imports")) == 1
-        assert "request" in imports_in_flask_package.get("imports")
-        assert imports_in_flask_package.get("line") == 1
+        assert len(imports.relative_imports) == 0
+        assert absolute_import.parent == "flask"
+        assert absolute_import.level == 0
+        assert len(absolute_import.children) == 1
+        assert absolute_import.children[0] == "request"
+        assert absolute_import.line == 1
 
     def test_get_relative_import_in_a_local_file(
         self,
@@ -81,17 +77,15 @@ class TestPyDependence:
         """
         file_path = set_up_file("""from ... import request""")
         handler = self.entry_point()
-        imports: Dict = handler.get_imports(file_path)
-        file_imports = imports.get(file_path)
+        imports: ImportsCollectionFile = handler.get_imports(file_path)
 
-        assert file_imports, "Any import was found"
-        imports_statements_found: List = file_imports.get("imports")
-        imports_from_statement_found = file_imports.get("imports_from")
-        absolute_imports_found = imports_from_statement_found.get("relative_imports")[0]
+        assert imports, "Any import was found"
+        assert imports.relative_imports, "Any relative import was found"
 
-        assert len(imports_statements_found) == 0
-        assert absolute_imports_found.get("level") == 3
-        assert absolute_imports_found.get("imports")[0] == "request"
+        relative_import = imports.relative_imports[0]
+        assert len(imports.imports) == 0
+        assert relative_import.level == 3
+        assert relative_import.children[0] == "request"
 
     def test_get_import_without_statement_from_in_a_local_file(
         self,
@@ -114,105 +108,63 @@ class TestPyDependence:
         """
         file_path = set_up_file("""import flask""")
         handler = self.entry_point()
-        imports: Dict = handler.get_imports(file_path)
-        validate_flask_import(imports, file_path)
+        imports: ImportsCollectionFile = handler.get_imports(file_path)
 
-    def test_get_import_excluding_internal_imports(
-        self,
-        py_package: Tuple,
+        assert imports, "Any import was found"
+        imports_without_from_statement_found: List[ImportStatement] = imports.imports
+        import_found = imports_without_from_statement_found[0].children
+
+        assert len(imports_without_from_statement_found) == 1
+        assert import_found[0] == "flask"
+        assert imports_without_from_statement_found[0].line == 1
+
+    def test_get_import_in_a_local_directory(
+        self, py_package: Tuple[str, List[str]]
     ) -> None:
         """
-        Validate if the imports that make reference to an internal package are excluded
-        Args:
-            py_package: Fixture to instantiate a python package scenario
-
-        Notes:
-            This case is base in python package
-
-            File 1:
-                import django
-
-            File 2:
-                from module1 import django
-                import flask
-
-        Expected results:
-            * Module1 must be excluded from the imports found
-            * Must exist just one import in the file
-            * Must exist just two module been imported from flask and keras
-            * The import must be placed in the first line
-        """
-        package_dir, main_file_path = py_package
-        handler = self.entry_point(omit_internal_imports=True, base_dir=package_dir)
-        imports = handler.get_imports(main_file_path)
-        validate_flask_import(imports, main_file_path)
-
-    def test_get_import_without_unused_imports_when_absolute_imports(
-        self,
-        set_up_file: Callable,
-    ) -> None:
-        """
-        Validate if the absolute imports that are not used in the .py are excluded
-        Args:
-            set_up_file: Dynamic fixture to create .py test file
+        Validate if it's correctly parse the .py files found in a folder or package
 
         Notes:
             Test case:
-                import django
-                from x import flask, keras
-                ...
+                file # 1
+                    **empty**
 
-                keras()
+                file #2
+                    import django
 
-        Expected results:
-            * django and x.flask must be excluded because they are not used in the file
-            * Any basic import or relative import must be found
-            * Must be returned just the package call "x" because the module/implementation
-              called keras was called
-        """
-        file_path = set_up_file("""import django\nfrom x import flask, keras\nkeras()""")
-        handler = self.entry_point(omit_unused_imports=True)
-        imports: Dict = handler.get_imports(file_path)
-        file_imports = imports.get(file_path)
-
-        assert file_imports, "Data no returned"
-        assert file_imports.get("imports", []) == []
-
-        imports_from: Dict = file_imports.get("imports_from", {})
-        assert imports_from, "Data of import_from no returned"
-        assert imports_from.get("relative_imports") == []
-        assert imports_from.get("absolute_imports", {}).get("x")
-
-    def test_get_import_without_unused_imports_when_relative_imports(
-        self,
-        set_up_file: Callable,
-    ) -> None:
-        """
-        Validate if the relative imports that are not used in the .py are excluded
-        Args:
-            set_up_file: Dynamic fixture to create .py test file
-
-        Notes:
-            Test case:
-                from .x import flask, keras
-                keras()
+                file #3
+                    import flask
+                    from module1 import django
 
         Expected results:
-            * Must be exclude flask from the relative imports because it's not used
-            * Must be found just one relative import
-            * Must be found keras as the only relative import used
-        """
-        file_path = set_up_file("""from .x import flask, keras\nkeras()""")
-        handler = self.entry_point(omit_unused_imports=True)
-        imports: Dict = handler.get_imports(file_path)
-        file_imports = imports.get(file_path, {})
+            * The amount of file parser must be the same of .py files found
+              in the folder|package
 
-        imports_from: Dict = file_imports.get("imports_from")
-        assert imports_from, "Data of import_from no returned"
-        relative_imports = imports_from.get("relative_imports")
-        assert relative_imports, "Missing relative imports"
-        assert len(relative_imports) == 1
-        assert relative_imports[0].get("imports") == ["keras"]
+            File #1
+                * There is nothing here
+            File #2
+                * Must exist a import statement with a child module named 'django'
+            File #3
+                * Must exist a import statement with a child module named 'flask'
+                * Must exist and absolute import with a child named 'django' and with a
+                  parent named 'module1'
+        """
+        dir_path, file_paths = py_package
+        [first_file, second_file, third_file] = file_paths
+
+        handler = self.entry_point()
+        imports: Dict = handler.get_imports(dir_path)
+
+        assert len(imports.keys()) == len(file_paths)
+        assert len(imports[first_file].imports) == 0
+        assert len(imports[first_file].absolute_imports) == 0
+        assert len(imports[first_file].relative_imports) == 0
+
+        assert imports[second_file].imports[0].children[0] == "django"
+
+        assert imports[third_file].imports[0].children[0] == "flask"
+        assert imports[third_file].absolute_imports[0].children[0] == "django"
+        assert imports[third_file].absolute_imports[0].parent == "module1"
 
 
 class TestPyGitDependence:
@@ -235,6 +187,7 @@ class TestPyGitDependence:
     ) -> None:
         """
         Validate if imports are parse properly in a git context
+
         Args:
             tmpdir: Temporary directory
             set_up_file: Dynamic fixture to create files
@@ -257,4 +210,14 @@ class TestPyGitDependence:
         )
         dep = self.entry_point(git_url=self.REPOSITORY_URL)
         imports: Dict = dep.get_imports()
-        validate_flask_import(imports, file_path)
+        import_in_file: ImportsCollectionFile = imports.get(file_path)
+
+        assert import_in_file, "Any import was found"
+        imports_without_from_statement_found: List[
+            ImportStatement
+        ] = import_in_file.imports
+        import_found = imports_without_from_statement_found[0].children
+
+        assert len(imports_without_from_statement_found) == 1
+        assert import_found[0] == "flask"
+        assert imports_without_from_statement_found[0].line == 1

@@ -19,26 +19,6 @@ class TestPyDependence:
 
     entry_point = PyDependence
 
-    def test_define_base_dir_properly_when_omit_internal_imports_is_provided(
-        self, tmpdir: str, mocker: MockerFixture
-    ) -> None:
-        """
-        Validate if the base_dir is properly defined, and the config option
-        omit_internal_imports is True
-        Args:
-            tmpdir: Temporal dir
-            mocker: Fixture to mock objects
-        """
-        logger_mock = mocker.patch("pydep.py_dependency.logger")
-        mocker.patch.object(self.entry_point, "is_valid", return_value=True)
-        mocker.patch.object(self.entry_point, "_process_dir")
-
-        dep = self.entry_point(omit_internal_imports=True)
-        dep.get_imports(tmpdir)
-
-        assert dep.base_dir == tmpdir, f"The base_dir expected is: {tmpdir}"
-        logger_mock.info.assert_called_with("default base dir: %s", tmpdir)
-
     def test_raise_error_when_the_path_is_not_py_file(
         self,
         tmpdir: str,
