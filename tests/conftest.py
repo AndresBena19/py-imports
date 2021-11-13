@@ -1,6 +1,6 @@
 """General conftest"""
 import os
-from typing import Callable, Tuple
+from typing import Callable, List, Tuple
 
 import pytest
 from git import Repo
@@ -43,7 +43,7 @@ def set_up_file(tmp_path: str) -> Callable[[str, str], str]:
 
 
 @pytest.fixture
-def py_package(tmpdir: str, set_up_file: Callable[[str, str], str]) -> Tuple:
+def py_package(tmpdir: str, set_up_file: Callable[[str, str], str]) -> Tuple[str, List]:
     """
     Fixture to create a temporal python package
 
@@ -52,13 +52,13 @@ def py_package(tmpdir: str, set_up_file: Callable[[str, str], str]) -> Tuple:
         tmpdir: temporal directory path
     """
 
-    set_up_file("", os.path.join(tmpdir, "__init__.py"))
-    set_up_file("""import django""", os.path.join(tmpdir, "module1.py"))
-    main_file_path = set_up_file(
+    first_file = set_up_file("", os.path.join(tmpdir, "__init__.py"))
+    second_file = set_up_file("""import django""", os.path.join(tmpdir, "module1.py"))
+    third_file = set_up_file(
         """import flask\nfrom module1 import django""", os.path.join(tmpdir, "main.py")
     )
 
-    return tmpdir, main_file_path
+    return tmpdir, [first_file, second_file, third_file]
 
 
 @pytest.fixture
