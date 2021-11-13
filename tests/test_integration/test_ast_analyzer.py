@@ -30,7 +30,7 @@ class TestAstImportAnalyzer:
         content_file = """from ... import request"""
         file_path = set_up_file(content_file)
 
-        with open(file_path, "r") as file:
+        with open(file_path, "r", encoding="utf8") as file:
             data = file.readlines()
             file.seek(0)
             analyzer = self.ast_analyzer(data)

@@ -126,7 +126,7 @@ class PyDependence(UnUsedImportMixin):
         Returns:
             Dict: The imports found in the directory or files
         """
-        imports: Union[Dict, ImportsCollectionFile] = {}
+        imports: Union[Dict[str, ImportsCollectionFile], ImportsCollectionFile] = {}
         if self.is_valid(path):
             if os.path.isdir(path):
                 imports = self._process_dir(path)
