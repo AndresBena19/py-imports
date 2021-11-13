@@ -2,8 +2,8 @@
 import ast
 from typing import Callable
 
-from pydep.py_dependency import PyDependence
 from pydep.ast_analyzers import AstImportAnalyzer
+from pydep.py_dependency import PyDependence
 
 
 class TestAstImportAnalyzer:
@@ -42,6 +42,3 @@ class TestAstImportAnalyzer:
         assert imports.relative_imports[0].statement == content_file
         assert imports.relative_imports[0].children[0] == "request"
         assert imports.relative_imports[0].level == 3
-
-
-

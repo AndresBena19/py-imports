@@ -78,14 +78,16 @@ class PyDependence(UnUsedImportMixin):
 
         return analyzer.imports_metadata
 
-    def _process_py_files(self, files: List[str], root: str) -> Dict:
+    def _process_py_files(
+        self, files: List[str], root: str
+    ) -> Dict[str, ImportsCollectionFile]:
         """Parse the .py in the files found
 
         Args:
             files: files found in the root directory
             root: root path where the files was found
         """
-        imports_found = {}
+        imports_found: Dict[str, ImportsCollectionFile] = {}
         py_files = filter(lambda file: file.endswith(".py"), files)
 
         for path_file in py_files:
@@ -105,18 +107,20 @@ class PyDependence(UnUsedImportMixin):
         """
         return self.get_ast_imports(path)
 
-    def _process_dir(self, path_dir: str) -> Dict:
+    def _process_dir(self, path_dir: str) -> Dict[str, ImportsCollectionFile]:
         """Parse every file found in the directory
         Args:
             path_dir: absolute directory path
         """
-        imports: Dict = {}
+        imports: Dict[str, ImportsCollectionFile] = {}
         for root, _, files in os.walk(path_dir):
             file_imports = self._process_py_files(files, root)
             imports.update(file_imports)
         return imports
 
-    def get_imports(self, path: str) -> Union[Dict, ImportsCollectionFile, NoReturn]:
+    def get_imports(
+        self, path: str
+    ) -> Union[Dict[str, ImportsCollectionFile], ImportsCollectionFile, NoReturn]:
         """Get the imports in the context provided
 
         Returns:
@@ -216,7 +220,7 @@ class PyGitDependence(PyDependence):
 
     def get_imports(  # type: ignore[override]
         self, path: str = ""
-    ) -> Union[Dict, ImportsCollectionFile, NoReturn]:
+    ) -> Union[Dict[str, ImportsCollectionFile], ImportsCollectionFile, NoReturn]:
         """Get the imports in the git context
         Returns:
             Dict: all the import found in the file or files
