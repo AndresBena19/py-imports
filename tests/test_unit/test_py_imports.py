@@ -30,9 +30,9 @@ class TestPyImports:
         """
         path = os.path.join(tmpdir, "pyproject.toml")
         file_path = set_up_file(self.IMPORT_TEST_CASE, path)
-        dep = self.entry_point(omit_internal_imports=True)
-        with pytest.raises(WrongFileExtension):
-            dep.get_imports(file_path)
+        with self.entry_point() as dep:  # type: ignore
+            with pytest.raises(WrongFileExtension):
+                dep.get_imports(file_path)
 
     def test_py_files_are_filtered_and_processed_when_is_provided_a_directory(
         self,
@@ -53,9 +53,8 @@ class TestPyImports:
         process_file_mock = mocker.patch.object(self.entry_point, "_process_file")
         mocker.patch("py_imports.manager.os.walk", return_value=test_directory_structure)
 
-        dep = self.entry_point()
-        dep.get_imports(tmpdir)
-
-        expected_calls = [call(os.path.join(tmpdir, file)) for file in test_py_files]
-        assert process_file_mock.call_count == 2
-        process_file_mock.assert_has_calls(expected_calls, any_order=True)
+        with self.entry_point() as dep:  # type: ignore
+            dep.get_imports(tmpdir)
+            expected_calls = [call(os.path.join(tmpdir, file)) for file in test_py_files]
+            assert process_file_mock.call_count == 2
+            process_file_mock.assert_has_calls(expected_calls, any_order=True)

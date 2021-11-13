@@ -14,7 +14,7 @@ ignore=CVS, pip-wheel-metadata, docs, htmlcov, .git, __pycache__, old, build, di
 
 # Add files or directories matching the regex patterns to the blacklist. The
 # regex matches against base names, not paths.
-ignore-patterns=
+ignore-patterns=module_file.py,module_file_two.py
 
 # Python code to execute, usually for sys.path manipulation such as
 # pygtk.require().
@@ -31,7 +31,7 @@ limit-inference-results=100
 
 # List of plugins (as comma separated values of python module names) to load,
 # usually to register additional checkers.
-load-plugins=pylint_pytest
+load-plugins=
 
 # Pickle collected data for later comparisons.
 persistent=yes

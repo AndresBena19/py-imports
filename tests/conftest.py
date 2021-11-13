@@ -3,7 +3,6 @@ import os
 from typing import Callable, List, Tuple
 
 import pytest
-from git import Repo
 
 
 # Disable because pylint assume that the fixture as a parameters are a redefinition
@@ -59,23 +58,3 @@ def py_package(tmpdir: str, set_up_file: Callable[[str, str], str]) -> Tuple[str
     )
 
     return tmpdir, [first_file, second_file, third_file]
-
-
-@pytest.fixture
-def set_up_git_repository(tmpdir: str) -> Callable[[str, str], Repo]:
-    """Fixture to initialize a local repository
-    Args:
-        tmpdir: Temporal directory to host the repository
-
-    Returns:
-        Repo: Repository instance
-    """
-
-    def set_up(file_path: str, destine_path: str = "") -> Repo:
-        path = destine_path if destine_path else tmpdir
-        repo = Repo.init(path)
-        repo.index.add([file_path])
-        repo.index.commit("initial commit")
-        return repo
-
-    return set_up
