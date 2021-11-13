@@ -1,7 +1,7 @@
 """Integration test cases to validate the properly parse of python imports"""
-from typing import Callable, Dict, List, Tuple
+from typing import Callable, List, Tuple
 
-from py_imports.base.models import ImportsCollectionFile, ImportStatement
+from py_imports.base.models import ImportStatement
 from py_imports.manager import PyImports
 
 
@@ -35,20 +35,20 @@ class TestPyImports:
             * The import must be placed in the first line
         """
         file_path = set_up_file("""from flask import request""")
-        handler = self.entry_point()
-        imports: ImportsCollectionFile = handler.get_imports(file_path)  # type: ignore
+        with self.entry_point() as handler:  # type: ignore
+            imports = handler.get_imports(file_path)  # type: ignore
 
-        assert imports, "Any import was found"
-        assert imports.absolute_imports, "Any absolute import was found"
+            assert imports, "Any import was found"
+            assert imports.absolute_imports, "Any absolute import was found"
 
-        absolute_import = imports.absolute_imports[0]
+            absolute_import = imports.absolute_imports[0]
 
-        assert len(imports.relative_imports) == 0
-        assert absolute_import.parent == "flask"
-        assert absolute_import.level == 0
-        assert len(absolute_import.children) == 1
-        assert absolute_import.children[0] == "request"
-        assert absolute_import.line == 1
+            assert len(imports.relative_imports) == 0
+            assert absolute_import.parent == "flask"
+            assert absolute_import.level == 0
+            assert len(absolute_import.children) == 1
+            assert absolute_import.children[0] == "request"
+            assert absolute_import.line == 1
 
     def test_get_relative_import_in_a_local_file(
         self,
@@ -70,16 +70,16 @@ class TestPyImports:
             * The import must be placed in the first line
         """
         file_path = set_up_file("""from ... import request""")
-        handler = self.entry_point()
-        imports: ImportsCollectionFile = handler.get_imports(file_path)  # type: ignore
+        with self.entry_point() as handler:  # type: ignore
+            imports = handler.get_imports(file_path)  # type: ignore
 
-        assert imports, "Any import was found"
-        assert imports.relative_imports, "Any relative import was found"
+            assert imports, "Any import was found"
+            assert imports.relative_imports, "Any relative import was found"
 
-        relative_import = imports.relative_imports[0]
-        assert len(imports.imports) == 0
-        assert relative_import.level == 3
-        assert relative_import.children[0] == "request"
+            relative_import = imports.relative_imports[0]
+            assert len(imports.imports) == 0
+            assert relative_import.level == 3
+            assert relative_import.children[0] == "request"
 
     def test_get_import_without_statement_from_in_a_local_file(
         self,
@@ -101,16 +101,16 @@ class TestPyImports:
             * The import must be placed in the first line
         """
         file_path = set_up_file("""import flask""")
-        handler = self.entry_point()
-        imports: ImportsCollectionFile = handler.get_imports(file_path)  # type: ignore
+        with self.entry_point() as handler:  # type: ignore
+            imports = handler.get_imports(file_path)  # type: ignore
 
-        assert imports, "Any import was found"
-        imports_without_from_statement_found: List[ImportStatement] = imports.imports
-        import_found = imports_without_from_statement_found[0].children
+            assert imports, "Any import was found"
+            imports_without_from_statement_found: List[ImportStatement] = imports.imports
+            import_found = imports_without_from_statement_found[0].children
 
-        assert len(imports_without_from_statement_found) == 1
-        assert import_found[0] == "flask"
-        assert imports_without_from_statement_found[0].line == 1
+            assert len(imports_without_from_statement_found) == 1
+            assert import_found[0] == "flask"
+            assert imports_without_from_statement_found[0].line == 1
 
     def test_get_import_in_a_local_directory(
         self, py_package: Tuple[str, List[str]]
@@ -146,18 +146,17 @@ class TestPyImports:
         dir_path, file_paths = py_package
         [first_file, second_file, third_file] = file_paths
 
-        handler = self.entry_point()
-        imports: Dict[str, ImportsCollectionFile] = handler.get_imports(
-            dir_path
-        )  # type: ignore
+        with self.entry_point() as handler:  # type: ignore
+            handler.get_imports(dir_path)
+            imports = handler.imports_resume()  # type: ignore
 
-        assert len(imports.keys()) == len(file_paths)
-        assert len(imports[first_file].imports) == 0
-        assert len(imports[first_file].absolute_imports) == 0
-        assert len(imports[first_file].relative_imports) == 0
+            assert len(imports.keys()) == len(file_paths)
+            assert len(imports[first_file].imports) == 0
+            assert len(imports[first_file].absolute_imports) == 0
+            assert len(imports[first_file].relative_imports) == 0
 
-        assert imports[second_file].imports[0].children[0] == "django"
+            assert imports[second_file].imports[0].children[0] == "django"
 
-        assert imports[third_file].imports[0].children[0] == "flask"
-        assert imports[third_file].absolute_imports[0].children[0] == "django"
-        assert imports[third_file].absolute_imports[0].parent == "module1"
+            assert imports[third_file].imports[0].children[0] == "flask"
+            assert imports[third_file].absolute_imports[0].children[0] == "django"
+            assert imports[third_file].absolute_imports[0].parent == "module1"
