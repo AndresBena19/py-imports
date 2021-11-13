@@ -7,16 +7,16 @@ from typing import Any, Dict, List, NoReturn, Optional, Union
 
 from git import Repo
 
-from pydep.ast_analyzers import AstImportAnalyzer
-from pydep.base.models import ImportsCollectionFile
-from pydep.exceptions import WrongFileExtension
-from pydep.mixins import UnUsedImportMixin
+from py_imports.ast_analyzers import AstImportAnalyzer
+from py_imports.base.models import ImportsCollectionFile
+from py_imports.exceptions import WrongFileExtension
+from py_imports.mixins import UnUsedImportMixin
 
 
 logger = logging.getLogger(__name__)
 
 
-class PyDependence(UnUsedImportMixin):
+class PyImports(UnUsedImportMixin):
     """
     Parse and capture every import data statement in a directory, file
     """
@@ -41,12 +41,12 @@ class PyDependence(UnUsedImportMixin):
         Examples:
                 1. Parse imports in an specific local directory
                     ...
-                    dep = PyDependence(path=DIR_PATH)
+                    dep = PyImports(path=DIR_PATH)
                     dep.get_imports()
 
                 2. Parse imports in an specific local file
                     ...
-                    dep = PyDependence(path=FILE_PATH)
+                    dep = PyImports(path=FILE_PATH)
                     dep.get_imports()
         """
         self.base_dir: str = kwargs.get("base_dir", "")
@@ -135,7 +135,7 @@ class PyDependence(UnUsedImportMixin):
         return imports
 
 
-class PyGitDependence(PyDependence):
+class PyGitDependence(PyImports):
     """
     Parse and capture imports data statement when is provided a git repository
     """
@@ -164,18 +164,18 @@ class PyGitDependence(PyDependence):
         Examples:
                 1. Parse imports in an repository
                     ...
-                    dep = PyDependence(git_url=REPOSITORY_URL)
+                    dep = PyImports(git_url=REPOSITORY_URL)
                     dep.get_imports()
 
                 2. Parse imports in an repository but in the context of the
                    specific commit id
                     ...
-                    dep = PyDependence(git_url=REPOSITORY_URL, commit_id=COMMIT)
+                    dep = PyImports(git_url=REPOSITORY_URL, commit_id=COMMIT)
                     dep.get_imports()
 
                 3. Parse imports in a but in the context of the specific branch
                     ...
-                    dep = PyDependence(git_url=REPOSITORY_URL, branch="develop")
+                    dep = PyImports(git_url=REPOSITORY_URL, branch="develop")
                     dep.get_imports()
 
         Raises:

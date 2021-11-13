@@ -1,5 +1,5 @@
 """
-Custom exceptions for pydep
+Custom exceptions for py_imports
 """
 
 

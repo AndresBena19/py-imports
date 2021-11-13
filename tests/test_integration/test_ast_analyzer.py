@@ -2,8 +2,8 @@
 import ast
 from typing import Callable
 
-from pydep.ast_analyzers import AstImportAnalyzer
-from pydep.py_dependency import PyDependence
+from py_imports.ast_analyzers import AstImportAnalyzer
+from py_imports.manager import PyImports
 
 
 class TestAstImportAnalyzer:
@@ -11,7 +11,7 @@ class TestAstImportAnalyzer:
     Test cases to validate AstImportAnalyzer behavior
     """
 
-    entry_point = PyDependence
+    entry_point = PyImports
     ast_analyzer = AstImportAnalyzer
 
     def test_properly_parse_and_object_generation_with_the_parse_imports(

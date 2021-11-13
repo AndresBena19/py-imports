@@ -7,16 +7,16 @@ from pytest_mock import MockFixture
 
 from py._path.local import LocalPath
 
-from pydep.base.models import ImportsCollectionFile, ImportStatement
-from pydep.py_dependency import PyDependence, PyGitDependence
+from py_imports.base.models import ImportsCollectionFile, ImportStatement
+from py_imports.manager import PyGitDependence, PyImports
 
 
-class TestPyDependence:
+class TestPyImports:
     """
     Test cases to validate the properly parse of imports in .py file
     """
 
-    entry_point = PyDependence
+    entry_point = PyImports
 
     def test_get_absolute_import_in_a_local_file(
         self,
