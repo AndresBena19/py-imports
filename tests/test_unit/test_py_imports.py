@@ -7,7 +7,7 @@ import pytest
 from pytest_mock import MockerFixture
 
 from py_imports.exceptions import WrongFileExtension
-from py_imports.py_imports import PyImports
+from py_imports.manager import PyImports
 
 
 class TestPyImports:
@@ -51,9 +51,7 @@ class TestPyImports:
         test_directory_structure = [(tmpdir, ["test_dir"], test_py_files + others_files)]
 
         process_file_mock = mocker.patch.object(self.entry_point, "_process_file")
-        mocker.patch(
-            "py_imports.py_dependency.os.walk", return_value=test_directory_structure
-        )
+        mocker.patch("py_imports.manager.os.walk", return_value=test_directory_structure)
 
         dep = self.entry_point()
         dep.get_imports(tmpdir)

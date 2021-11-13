@@ -3,7 +3,7 @@ import ast
 from typing import Callable
 
 from py_imports.ast_analyzers import AstImportAnalyzer
-from py_imports.py_imports import PyImports
+from py_imports.manager import PyImports
 
 
 class TestAstImportAnalyzer:

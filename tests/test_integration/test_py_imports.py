@@ -8,7 +8,7 @@ from pytest_mock import MockFixture
 from py._path.local import LocalPath
 
 from py_imports.base.models import ImportsCollectionFile, ImportStatement
-from py_imports.py_imports import PyGitDependence, PyImports
+from py_imports.manager import PyGitDependence, PyImports
 
 
 class TestPyImports:
