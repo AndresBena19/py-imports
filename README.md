@@ -46,11 +46,38 @@ $ pip install py-imports
 ```Python
 from py_imports.manager import PyImports
 
+myself = "main.py"
+
+# Let's introspect myself
 with PyImports() as manager:
-    manager.get_imports("module_file.py")
-    manager.get_imports("module_file_two.py")
+    manager.get_imports(myself)
     imports = manager.imports_resume()
 
+
+# Now yo have access to the import used in each file 
+print(imports)
+{
+ 'main.py': <py_imports.base.models.ImportsCollectionFile object at 0x10b889220>
+}
+
+# Get details about the absolute, relative and standard imports in the file
+collector_object = imports.get(myself)
+absolute_imports = collector_object.absolute_imports
+relative_imports = collector_object.relative_imports
+imports = collector_object.imports
+
+# It's obvious that in this file, theare just one absolute import
+# from py_imports.manager import PyImports
+# If we introspect the object, wi will get the next
+
+first_import = absolute_imports[0]
+first_import.childs -> ['PyImports']
+first_import.parent -> 'py_imports.manager'
+first_import.statement -> 'from py_imports.manager import PyImports'
+first_import.level -> 0
+first_import.line -> 1
+
+# Now you know more about you...
 ```
 
 ## License
