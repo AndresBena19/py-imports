@@ -31,7 +31,7 @@ class AstImportAnalyzer(ast.NodeVisitor):
 
         self._imports_collector.register_import(
             line=node.lineno,
-            childs=imports,
+            children=imports,
             statement=self.file_content[node.lineno - 1],
         )
         self.generic_visit(node)
@@ -54,7 +54,7 @@ class AstImportAnalyzer(ast.NodeVisitor):
         imports: List[str] = [alias.name for alias in node.names]
         self._imports_collector.register_import_from(
             line=node.lineno,
-            childs=imports,
+            children=imports,
             parent=node.module if node.module else "",
             level=node.level,
             statement=self.file_content[node.lineno - 1],
