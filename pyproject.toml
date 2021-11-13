@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "pydep"
+name = "py_imports"
 version = "0.1.0"
 description = "Python Toolkit to imports instrospection"
 license = "Propietary"
@@ -18,7 +18,7 @@ classifiers= [
     "Topic :: Software Development",
 ]
 packages = [
-    { include = "pydep" },
+    { include = "py_imports" },
 ]
 
 [tool.poetry.dependencies]
