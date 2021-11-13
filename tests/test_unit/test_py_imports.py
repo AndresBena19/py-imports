@@ -30,7 +30,7 @@ class TestPyImports:
         """
         path = os.path.join(tmpdir, "pyproject.toml")
         file_path = set_up_file(self.IMPORT_TEST_CASE, path)
-        dep = self.entry_point(omit_internal_imports=True)
+        dep = self.entry_point()
         with pytest.raises(WrongFileExtension):
             dep.get_imports(file_path)
 
