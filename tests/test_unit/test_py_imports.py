@@ -1,4 +1,4 @@
-"""Unit test cases to validate PyDependence"""
+"""Unit test cases to validate PyImports"""
 import os
 from typing import Callable
 from unittest.mock import call
@@ -6,18 +6,18 @@ from unittest.mock import call
 import pytest
 from pytest_mock import MockerFixture
 
-from pydep.exceptions import WrongFileExtension
-from pydep.py_dependency import PyDependence
+from py_imports.exceptions import WrongFileExtension
+from py_imports.py_imports import PyImports
 
 
-class TestPyDependence:
+class TestPyImports:
     """
     Test cases to validate the properly parse of imports in .py file
     """
 
     IMPORT_TEST_CASE = """from flask import request"""
 
-    entry_point = PyDependence
+    entry_point = PyImports
 
     def test_raise_error_when_the_path_is_not_py_file(
         self,
@@ -51,7 +51,9 @@ class TestPyDependence:
         test_directory_structure = [(tmpdir, ["test_dir"], test_py_files + others_files)]
 
         process_file_mock = mocker.patch.object(self.entry_point, "_process_file")
-        mocker.patch("pydep.py_dependency.os.walk", return_value=test_directory_structure)
+        mocker.patch(
+            "py_imports.py_dependency.os.walk", return_value=test_directory_structure
+        )
 
         dep = self.entry_point()
         dep.get_imports(tmpdir)

@@ -2,7 +2,7 @@
 import ast
 from typing import Any, List
 
-from pydep.base import ImportsCollectionFile
+from py_imports.base import ImportsCollectionFile
 
 
 class AstImportAnalyzer(ast.NodeVisitor):

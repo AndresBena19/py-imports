@@ -1,11 +1,11 @@
 [tool.poetry]
 name = "pydep"
 version = "0.1.0"
-description = "Python Toolkit for dependencies and requirements instrospection"
+description = "Python Toolkit to imports instrospection"
 license = "Propietary"
 authors = ["Andres <andresbenavides404@gmail.com>"]
 readme = "README.md"
-repository = "git@github.com:AndresBena19/pydep-ast.git"
+repository = "git@github.com:AndresBena19/py-imports.git"
 classifiers= [
     "Environment :: Web Environment",
     "Intended Audience :: Developers",
