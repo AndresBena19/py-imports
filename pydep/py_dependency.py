@@ -3,19 +3,20 @@ import ast
 import logging
 import os
 import shutil
-from typing import Any, Dict, List, NoReturn, Optional, Tuple, Union
+from typing import Any, Dict, List, NoReturn, Optional, Union
 
 from git import Repo
 
 from pydep.ast_analyzers import AstImportAnalyzer
-from pydep.exceptions import RequiredBaseDirError, WrongFileExtension
-from pydep.mixins import InternalPackagesMixin, UnUsedImportMixin
+from pydep.base.models import ImportsCollectionFile
+from pydep.exceptions import WrongFileExtension
+from pydep.mixins import UnUsedImportMixin
 
 
 logger = logging.getLogger(__name__)
 
 
-class PyDependence(InternalPackagesMixin, UnUsedImportMixin):
+class PyDependence(UnUsedImportMixin):
     """
     Parse and capture every import data statement in a directory, file
     """
@@ -32,14 +33,10 @@ class PyDependence(InternalPackagesMixin, UnUsedImportMixin):
         **kwargs: Any,
     ) -> None:
         """Parse the imports from a directory or file
+
         Args:
             path: Path of the file to parse
             **kwargs: Extra config arguments
-
-        Keyword Args:
-            omit_builtins: Bool to define if the builtins import must be omit
-            omit_internal_imports: Bool to define if will be omitted the imports that make
-                                   reference to any own package
 
         Examples:
                 1. Parse imports in an specific local directory
@@ -52,51 +49,19 @@ class PyDependence(InternalPackagesMixin, UnUsedImportMixin):
                     dep = PyDependence(path=FILE_PATH)
                     dep.get_imports()
         """
-        self.omit_internal_imports: Optional[bool] = kwargs.get("omit_internal_imports")
-        self.omit_unused_imports: Optional[bool] = kwargs.get("omit_unused_imports")
-
         self.base_dir: str = kwargs.get("base_dir", "")
-        self.builtins: List = []
-        self.internal_pkgs: List = []
-        self.root_modules: List = []
 
-    def is_valid(self, path: str) -> Union[NoReturn, bool]:
+    @staticmethod
+    def is_valid(path: str) -> Union[NoReturn, bool]:
         """Validate if the configuration provided has all the required parameters"""
 
         if os.path.isfile(path) and not path.endswith(".py"):
             raise WrongFileExtension("The file path provided must be .py")
 
-        if self.omit_internal_imports:
-            self.validate_omit_internal_imports(path)
-
         return True
 
-    def validate_omit_internal_imports(self, path: str) -> Optional[NoReturn]:
-        """Validate omit internal imports config options"""
-        if os.path.isfile(path) and not self.base_dir:
-            raise RequiredBaseDirError(
-                "If the option to omit internal imports was provided, must be "
-                "provided a base dir"
-            )
-
-    def _define_defaults(self, path: str) -> None:
-        """Define default variables that the used does not provided
-        Args:
-            path: directory/file to process
-        """
-        if os.path.isdir(path) and not self.base_dir:
-            self.base_dir = path
-        elif os.path.isfile(path) and not self.base_dir:
-            self.base_dir = os.path.dirname(os.path.realpath(path))
-
-        logger.info("default base dir: %s", self.base_dir)
-
-        if self.omit_internal_imports:
-            self.internal_pkgs = self.get_internal_packages(self.base_dir)
-            self.root_modules = self.get_root_modules(self.base_dir)
-
     @staticmethod
-    def get_ast_imports(path_file: str) -> Tuple[List[str], Dict]:
+    def get_ast_imports(path_file: str) -> ImportsCollectionFile:
         """Parse .py file to get imports
 
         Parse the .py file with the ast library in order to get the imports
@@ -105,26 +70,13 @@ class PyDependence(InternalPackagesMixin, UnUsedImportMixin):
             path_file: absolute path file to parse
         """
         with open(path_file, "r", encoding="utf-8") as file:
-            analyzer = AstImportAnalyzer()
+            data = file.readlines()
+            file.seek(0)
+            analyzer = AstImportAnalyzer(data)
             tree = ast.parse(file.read())
             analyzer.visit(tree)
-        return analyzer.imports, analyzer.imports_from
 
-    def _clean_imports(self, imports: List, imports_from: Dict, path: str) -> Tuple:
-        """
-        Clean the imports parsed base in the flags config provided
-        Args:
-            imports: List of the imports
-        """
-        if self.omit_unused_imports:
-            self.clean_unused_imports(imports, imports_from, path)
-
-        if self.omit_internal_imports:
-            self.clean_internal_imports(
-                imports_from, self.internal_pkgs, self.root_modules
-            )
-
-        return imports, imports_from
+        return analyzer.imports_metadata
 
     def _process_py_files(self, files: List[str], root: str) -> Dict:
         """Parse the .py in the files found
@@ -139,10 +91,10 @@ class PyDependence(InternalPackagesMixin, UnUsedImportMixin):
         for path_file in py_files:
             absolute_path = os.path.join(root, path_file)
             imports = self._process_file(absolute_path)
-            imports_found.update(imports)
+            imports_found.update({absolute_path: imports})
         return imports_found
 
-    def _process_file(self, path: str) -> Dict:
+    def _process_file(self, path: str) -> ImportsCollectionFile:
         """Parse imports in a .py file
         Args:
             path: path of the .py file
@@ -151,16 +103,7 @@ class PyDependence(InternalPackagesMixin, UnUsedImportMixin):
             Dict: with the imports and from imports found
 
         """
-        imports, imports_from = self.get_ast_imports(path)
-        imports_cleaned, imports_from_cleaned = self._clean_imports(
-            imports, imports_from, path
-        )
-        return {
-            path: {
-                "imports": imports_cleaned,
-                "imports_from": imports_from_cleaned,
-            }
-        }
+        return self.get_ast_imports(path)
 
     def _process_dir(self, path_dir: str) -> Dict:
         """Parse every file found in the directory
@@ -173,14 +116,13 @@ class PyDependence(InternalPackagesMixin, UnUsedImportMixin):
             imports.update(file_imports)
         return imports
 
-    def get_imports(self, path: str) -> Union[NoReturn, Dict]:
+    def get_imports(self, path: str) -> Union[Dict, ImportsCollectionFile, NoReturn]:
         """Get the imports in the context provided
 
         Returns:
             Dict: The imports found in the directory or files
         """
-        imports = {}
-        self._define_defaults(path)
+        imports: Union[Dict, ImportsCollectionFile] = {}
         if self.is_valid(path):
             if os.path.isdir(path):
                 imports = self._process_dir(path)
@@ -246,25 +188,6 @@ class PyGitDependence(PyDependence):
 
         super().__init__(**kwargs)
 
-    def validate_omit_internal_imports(self, path: str) -> Optional[NoReturn]:
-        """Validate omit_internal_imports config options in git context"""
-
-    def _define_defaults(self, path: str) -> None:
-        """Define default variables that the used does not provided
-        Args:
-            path: directory/file to process
-        """
-        if not self.base_dir:
-            self.base_dir = self.repo.working_dir
-            logger.info("default base dir: %s", self.base_dir)
-
-        if not self.branch:
-            self.branch = self.repo.active_branch
-            logger.info(
-                "The default branch %s selected by default", self.repo.active_branch
-            )
-        super()._define_defaults(path)
-
     def clone_and_check_out(self) -> Repo:
         """Clone a checkout
 
@@ -293,7 +216,7 @@ class PyGitDependence(PyDependence):
 
     def get_imports(  # type: ignore[override]
         self, path: str = ""
-    ) -> Union[NoReturn, Dict]:
+    ) -> Union[Dict, ImportsCollectionFile, NoReturn]:
         """Get the imports in the git context
         Returns:
             Dict: all the import found in the file or files
