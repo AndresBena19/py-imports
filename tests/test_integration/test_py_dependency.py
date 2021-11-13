@@ -42,7 +42,7 @@ class TestPyDependence:
         """
         file_path = set_up_file("""from flask import request""")
         handler = self.entry_point()
-        imports: ImportsCollectionFile = handler.get_imports(file_path)
+        imports: ImportsCollectionFile = handler.get_imports(file_path)  # type: ignore
 
         assert imports, "Any import was found"
         assert imports.absolute_imports, "Any absolute import was found"
@@ -77,7 +77,7 @@ class TestPyDependence:
         """
         file_path = set_up_file("""from ... import request""")
         handler = self.entry_point()
-        imports: ImportsCollectionFile = handler.get_imports(file_path)
+        imports: ImportsCollectionFile = handler.get_imports(file_path)  # type: ignore
 
         assert imports, "Any import was found"
         assert imports.relative_imports, "Any relative import was found"
@@ -108,7 +108,7 @@ class TestPyDependence:
         """
         file_path = set_up_file("""import flask""")
         handler = self.entry_point()
-        imports: ImportsCollectionFile = handler.get_imports(file_path)
+        imports: ImportsCollectionFile = handler.get_imports(file_path)  # type: ignore
 
         assert imports, "Any import was found"
         imports_without_from_statement_found: List[ImportStatement] = imports.imports
@@ -153,7 +153,9 @@ class TestPyDependence:
         [first_file, second_file, third_file] = file_paths
 
         handler = self.entry_point()
-        imports: Dict = handler.get_imports(dir_path)
+        imports: Dict[str, ImportsCollectionFile] = handler.get_imports(
+            dir_path
+        )  # type: ignore
 
         assert len(imports.keys()) == len(file_paths)
         assert len(imports[first_file].imports) == 0
@@ -209,8 +211,8 @@ class TestPyGitDependence:
             self.entry_point, "clone_and_check_out", return_value=git_repository
         )
         dep = self.entry_point(git_url=self.REPOSITORY_URL)
-        imports: Dict = dep.get_imports()
-        import_in_file: ImportsCollectionFile = imports.get(file_path)
+        imports: Dict[str, ImportsCollectionFile] = dep.get_imports()  # type: ignore
+        import_in_file: ImportsCollectionFile = imports.get(file_path)  # type: ignore
 
         assert import_in_file, "Any import was found"
         imports_without_from_statement_found: List[
