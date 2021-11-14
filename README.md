@@ -1,5 +1,5 @@
 
-![Py-Imports](img/icon-py-imports.png)
+![Py-Imports](img/icon-py-import.png)
 <p align="center">
     <em>Parse imports from .py file in a flexible way</em>
 </p>
@@ -33,6 +33,8 @@ py-imports stands on the shoulders of giants:
 $ pip install py-imports
 
 ---> 100%
+
+All it's ready to begin 
 ```
 
 </div>
@@ -54,7 +56,7 @@ with PyImports() as manager:
     imports = manager.imports_resume()
 
 
-# Now yo have access to the import used in each file 
+# Now you have access to the imports used in each file 
 print(imports)
 {
  'main.py': <py_imports.base.models.ImportsCollectionFile object at 0x10b889220>
@@ -66,8 +68,8 @@ absolute_imports = collector_object.absolute_imports
 relative_imports = collector_object.relative_imports
 imports = collector_object.imports
 
-# It's obvious that in this file, theare just one absolute import
-# from py_imports.manager import PyImports
+# It's obvious that in this file there are just one absolute import
+#  --- from py_imports.manager import PyImports ---
 # If we introspect the object, wi will get the next
 
 first_import = absolute_imports[0]
