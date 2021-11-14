@@ -3,9 +3,10 @@ import ast
 from typing import Any, List
 
 from py_imports.base import ImportsCollectionFile
+from py_imports.mixins import UnUsedImportMixin
 
 
-class AstImportAnalyzer(ast.NodeVisitor):
+class AstImportAnalyzer(UnUsedImportMixin, ast.NodeVisitor):
     """
     Capture the import statements in a py module file
     """
@@ -13,10 +14,12 @@ class AstImportAnalyzer(ast.NodeVisitor):
     # will be disable invalid-name alert in this class, because the builtin ast, does not
     # follow the snake_case format in his methods name
     # pylint: disable=C0103
-    def __init__(self, file_content: List[str]) -> None:
+    def __init__(self, file_content: List[str], raw_content: str) -> None:
         self.file_content = file_content
+        self.raw_content = raw_content
         super().__init__()
         self._imports_collector = ImportsCollectionFile()
+        self._unused_imports = self.get_unused_import()
 
     def visit_Import(self, node: ast.Import) -> Any:
         """
@@ -33,6 +36,7 @@ class AstImportAnalyzer(ast.NodeVisitor):
             line=node.lineno,
             children=imports,
             statement=self.file_content[node.lineno - 1],
+            children_unused=self._unused_imports.get(node.lineno, []),
         )
         self.generic_visit(node)
 
@@ -58,6 +62,7 @@ class AstImportAnalyzer(ast.NodeVisitor):
             parent=node.module if node.module else "",
             level=node.level,
             statement=self.file_content[node.lineno - 1],
+            children_unused=self._unused_imports.get(node.lineno, []),
         )
         self.generic_visit(node)
 
