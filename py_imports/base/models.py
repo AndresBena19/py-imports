@@ -24,9 +24,7 @@ class ImportStatement:
         self.children = children
         self.statement = statement
 
-        self.from_internal: bool = False
-        self.children_unused: List = []
-        self.kwargs = kwargs
+        self.children_unused: List = kwargs.get("children_unused", [])
 
 
 class ImportFromStatement(ImportStatement):
