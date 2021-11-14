@@ -5,6 +5,8 @@ import os
 from types import TracebackType
 from typing import Dict, List, NoReturn, Optional, Type, TypeVar, Union, cast
 
+from typing_extensions import Literal
+
 from py_imports.ast_analyzers import AstImportAnalyzer
 from py_imports.base.models import ImportsCollectionFile
 from py_imports.exceptions import WrongFileExtension
@@ -46,8 +48,8 @@ class PyImports(UnUsedImportMixin):
         exc_type: Optional[Type[BaseException]],
         exc_value: Optional[BaseException],
         traceback: Optional[TracebackType],
-    ) -> bool:
-        return True
+    ) -> Literal[False]:
+        return False
 
     @staticmethod
     def is_valid(path: str) -> Union[NoReturn, bool]:
@@ -68,10 +70,11 @@ class PyImports(UnUsedImportMixin):
             path_file: absolute path file to parse
         """
         with open(path_file, "r", encoding="utf-8") as file:
-            data = file.readlines()
+            file_content = file.readlines()
             file.seek(0)
-            analyzer = AstImportAnalyzer(data)
-            tree = ast.parse(file.read())
+            raw_content = file.read()
+            analyzer = AstImportAnalyzer(file_content, raw_content)
+            tree = ast.parse(raw_content)
             analyzer.visit(tree)
 
         return analyzer.imports_metadata

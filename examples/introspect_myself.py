@@ -10,7 +10,7 @@ with PyImports() as manager:
     imports = manager.imports_resume()
 
 
-# Now yo have access to the import used in each file
+# Now yuo have access to the import used in each file
 print(imports)
 
 # Get details about the absolute, relative and standard import in the file
@@ -19,7 +19,7 @@ absolute_imports = collector_object.absolute_imports
 relative_imports = collector_object.relative_imports
 imports = collector_object.imports
 
-# It's obvious that in this file, theare just one absolute import
+# It's obvious that in this file, there are just one absolute import
 # from py_imports.manager import PyImports
-# If we introspect the object, wi will get the next
+# If we introspect the object, we will get the next
 print(absolute_imports[0])
