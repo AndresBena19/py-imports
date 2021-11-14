@@ -1,5 +1,5 @@
 
-![Py-Imports](img/icon-py-import.png)
+![Py-Imports](img/icon-import-py.png)
 <p align="center">
     <em>Parse imports from .py file in a flexible way</em>
 </p>
@@ -70,7 +70,7 @@ imports = collector_object.imports
 
 # It's obvious that in this file there are just one absolute import
 #  --- from py_imports.manager import PyImports ---
-# If we introspect the object, wi will get the next
+# If we introspect the object, we will get the next
 
 first_import = absolute_imports[0]
 first_import.childs -> ['PyImports']
