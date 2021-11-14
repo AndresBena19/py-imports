@@ -5,7 +5,7 @@ description = "Python Toolkit to imports instrospection"
 license = "Propietary"
 authors = ["Andres <andresbenavides404@gmail.com>"]
 readme = "README.md"
-repository = "git@github.com:AndresBena19/py-imports.git"
+repository = "https://github.com/AndresBena19/py-imports.git"
 classifiers= [
     "Environment :: Web Environment",
     "Intended Audience :: Developers",
