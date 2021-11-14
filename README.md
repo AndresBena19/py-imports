@@ -10,8 +10,14 @@
 <a href="https://codecov.io/gh/andresbena19/py-imports" target="_blank">
     <img src="https://img.shields.io/codecov/c/github/andresbena19/py-imports" alt="Coverage">
 </a>
-
+<a href="https://pypi.org/project/py-imports" target="_blank">
+    <img src="https://img.shields.io/pypi/v/py-imports?color=%2334D058&label=pypi%20package" alt="Package version">
+</a>
+<a href="https://pypi.org/project/py-imports" target="_blank">
+    <img src="https://img.shields.io/pypi/pyversions/py_imports.svg?color=%2334D058" alt="Supported Python versions">
+</a>
 </p>
+
 
 ---
 
