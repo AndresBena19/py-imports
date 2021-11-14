@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "py_imports"
-version = "0.1.0"
+version = "1.0.0"
 description = "Python Toolkit to imports introspection"
 license = "Propietary"
 authors = ["Andres <andresbenavides404@gmail.com>"]
