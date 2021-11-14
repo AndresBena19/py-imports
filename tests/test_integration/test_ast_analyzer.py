@@ -33,8 +33,9 @@ class TestAstImportAnalyzer:
         with open(file_path, "r", encoding="utf8") as file:
             data = file.readlines()
             file.seek(0)
-            analyzer = self.ast_analyzer(data)
-            tree = ast.parse(file.read())
+            raw_content = file.read()
+            analyzer = self.ast_analyzer(data, raw_content)
+            tree = ast.parse(raw_content)
             analyzer.visit(tree)
 
         imports = analyzer.imports_metadata

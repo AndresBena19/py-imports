@@ -160,3 +160,34 @@ class TestPyImports:
             assert imports[third_file].imports[0].children[0] == "flask"
             assert imports[third_file].absolute_imports[0].children[0] == "django"
             assert imports[third_file].absolute_imports[0].parent == "module1"
+
+    def test_get_imports_in_a_local_file_with_unused_imports(
+        self,
+        set_up_file: Callable,
+    ) -> None:
+        """
+        Validate if the metadata about unused import are properly defined
+
+        Notes:
+            Cases:
+                import flask
+                from module1.doo import django, foo
+
+                flask()
+
+        Expected results:
+            * Must be 2 statement not used in the file
+            * django and foo are the two imports not used in the file
+        """
+        file_path = set_up_file(
+            """import flask\nfrom module1.doo import django, foo\nflask()"""
+        )
+
+        with self.entry_point() as handler:  # type: ignore
+            imports = handler.get_imports(file_path)  # type: ignore
+
+            assert imports, "Any import was found"
+            import_unused_found = imports.absolute_imports[0].children_unused
+
+            assert len(import_unused_found) == 2
+            assert import_unused_found == ["django", "django"]
