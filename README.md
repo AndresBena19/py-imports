@@ -87,7 +87,9 @@ first_import.line -> 1
 
 # Now you know more about you...
 ```
+## Notes
 
+This library does not execute any part of the python  target code, this just make a static analysis over the code to describe the meta information about the imports in the file.
 ## License
 
 This project is licensed under the terms of the MIT license.
