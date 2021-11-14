@@ -1,0 +1,54 @@
+[tool.poetry]
+name = "py_imports"
+version = "0.1.0"
+description = "Python Toolkit to imports introspection"
+license = "Propietary"
+authors = ["Andres <andresbenavides404@gmail.com>"]
+readme = "README.md"
+repository = "https://github.com/AndresBena19/py-imports.git"
+classifiers= [
+    "Environment :: Web Environment",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Topic :: Software Development",
+]
+packages = [
+    { include = "py_imports" },
+]
+
+[tool.poetry.dependencies]
+python = "^3.7,<4.0"
+pyflakes = "2.4.0"
+
+[tool.poetry.dev-dependencies]
+bandit = "1.7.0"
+flake8 = "4.0.1"
+mypy = "0.910"
+pre-commit = "^2.13.0"
+pytest = "6.2.5"
+pytest-cov = "3.0.0"
+pytest-mock = "3.6.1"
+isort = "5.9.3"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+  line-length = 90
+  exclude = '''
+/(
+    \.git
+  | \.venv
+  | buck-out
+  | build
+  | dist
+  | .egg
+)/
+'''
+
+[tool.isort]
+profile = "black"
