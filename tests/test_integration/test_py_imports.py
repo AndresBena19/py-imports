@@ -190,4 +190,4 @@ class TestPyImports:
             import_unused_found = imports.absolute_imports[0].children_unused
 
             assert len(import_unused_found) == 2
-            assert import_unused_found == ["django", "django"]
+            assert import_unused_found == ["django", "foo"]
