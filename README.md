@@ -1,5 +1,5 @@
 
-![Py-Imports](img/icon-import-py.png)
+![Py-Imports](https://github.com/AndresBena19/py-imports/blob/develop/img/icon-import-py.png?raw=true )
 <p align="center">
     <em>Parse imports from .py file in a flexible way</em>
 </p>
