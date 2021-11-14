@@ -1,7 +1,5 @@
 """Unit test cases to validate mixins"""
 
-from typing import Callable
-
 from py_imports.mixins import UnUsedImportMixin
 
 
@@ -15,11 +13,13 @@ class TestUnUsedImportMixin:
     Test cases to validate the UnUsedImportMixin
     """
 
-    mixin = UnUsedImportMixin
+    class TestCase(UnUsedImportMixin):
+        """test class"""
 
-    def test_if_it_returned_the_unused_import_from_file(
-        self, set_up_file: Callable
-    ) -> None:
+        def __init__(self, raw_content: str) -> None:
+            self.raw_content = raw_content
+
+    def test_if_it_returned_the_unused_import_from_file(self) -> None:
         """
         Validate if the unused import are properly detected
 
@@ -30,10 +30,11 @@ class TestUnUsedImportMixin:
                 function_one()
 
         Expected result:
-            * request from flask was not used in the file
+            * In the line 1, request from flask was not used in the file
         """
-        file_path = set_up_file(
-            """from flask import request\nfrom module import foo\nfoo()"""
-        )
-        unused_imports = UnUsedImportMixin.get_unused_import(file_path)
-        assert unused_imports[0] == "flask.request"
+
+        raw_content = """from flask import request\nfrom module import foo\nfoo()"""
+
+        test_instance = self.TestCase(raw_content)
+        unused_imports = test_instance.get_unused_import()
+        assert unused_imports[1] == ["request"]
