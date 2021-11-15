@@ -7,18 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.1.0] - 14 Nov 2021
 
-## Added
+### Added
 - CHANGELOG to track notable changes
-- add metadata about unused imports in the concrete implementations (`AbsoluteImportStatement`, `RelativeImportStatement`, `ImportFromStatement`)
+- Metadata about unused imports in the concrete implementations (`AbsoluteImportStatement`, `RelativeImportStatement`, `ImportFromStatement`)
 
-## Fixed
-- avoid silencing exceptions in `PyImports` context manager
+### Fixed
+- Avoid silencing exceptions in `PyImports` context manager
 
 ## [1.0.0] - 13 Nov 2021
 
 ### Added
 
-- add collector object `ImportsCollectionFile` to abstract the information about imports in the file
-- add `AbsoluteImportStatement`, `RelativeImportStatement`, `ImportFromStatement` concrete classes to describe each of the import types
-- add `AstImportAnalyzer` to traverse the abstract syntax tree python code
-- context manager `PyImports` to introspect imports in a file|dir 
+- Collector object `ImportsCollectionFile` to abstract the information about imports in the file
+- `AbsoluteImportStatement`, `RelativeImportStatement`, `ImportFromStatement` concrete classes to describe each of the import types
+- `AstImportAnalyzer` to traverse the abstract syntax tree python code
+- Context manager `PyImports` to introspect imports in a file | directory
