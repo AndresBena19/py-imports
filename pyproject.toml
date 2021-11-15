@@ -6,8 +6,12 @@ authors = ["Andres <andresbenavides404@gmail.com>"]
 readme = "README.md"
 repository = "https://github.com/AndresBena19/py-imports.git"
 classifiers= [
-    "Environment :: Web Environment",
     "Intended Audience :: Developers",
+    "Topic :: Utilities",
+    "Topic :: Software Development :: Libraries",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: POSIX",
     "Programming Language :: Python",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.7",
