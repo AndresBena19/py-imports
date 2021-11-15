@@ -1,7 +1,8 @@
-import ast
 import logging
-import os
-import shutil
-from typing import Any, Dict, List, NoReturn, Optional, Union
+from typing import Any
 
-from git import Repo
+from ...parse_local_dir import Repo
+
+
+def foo() -> Any:
+    pass
