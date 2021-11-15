@@ -52,38 +52,60 @@ All it's ready to begin
 * Create a file `main.py` with:
 
 ```Python
+import logging
 from py_imports.manager import PyImports
+from .parse_local_dir import file_imports_from_dir_one
 
 myself = "main.py"
 
 # Let's introspect myself
 with PyImports() as manager:
-    manager.get_imports(myself)
-    imports = manager.imports_resume()
-
+    imports_file = manager.get_imports(myself)
 
 # Now you have access to the imports used in each file 
-print(imports)
+imports_file
 {
  'main.py': <py_imports.base.models.ImportsCollectionFile object at 0x10b889220>
 }
 
 # Get details about the absolute, relative and standard imports in the file
-collector_object = imports.get(myself)
+collector_object = imports_file.get(myself)
 absolute_imports = collector_object.absolute_imports
 relative_imports = collector_object.relative_imports
-imports = collector_object.imports
+standard_imports = collector_object.imports
 
-# It's obvious that in this file there are just one absolute import
+# Absolute imports
 #  --- from py_imports.manager import PyImports ---
 # If we introspect the object, we will get the next
 
-first_import = absolute_imports[0]
-first_import.childs -> ['PyImports']
-first_import.parent -> 'py_imports.manager'
-first_import.statement -> 'from py_imports.manager import PyImports'
-first_import.level -> 0
-first_import.line -> 1
+example_abs_import = absolute_imports[0]
+example_abs_import.children -> ['PyImports']
+example_abs_import.parent -> 'py_imports.manager'
+example_abs_import.statement -> 'from py_imports.manager import PyImports'
+example_abs_import.level -> 0
+example_abs_import.line -> 2
+
+# relative imports
+#  --- from .parse_local_dir import file_imports_from_dir_one ---
+# If we introspect the object, we will get the next
+
+example_relative_import = relative_imports[0]
+example_abs_import.children -> ['file_imports_from_dir_one']
+example_abs_import.children_unused -> ['file_imports_from_dir_one']
+example_abs_import.parent -> 'parse_local_dir'
+example_abs_import.statement -> 'from .parse_local_dir import file_imports_from_dir_one'
+example_abs_import.level -> 1
+example_abs_import.line -> 3
+
+# standard imports
+#  --- import logging ---
+# If we introspect the object, we will get the next
+
+example_standard_import = standard_imports[0]
+example_standard_import.children -> ['logging']
+example_standard_import.children_unused -> ['logging']
+example_standard_import.statement -> 'import logging'
+example_standard_import.line -> 1
 
 # Now you know more about you...
 ```
