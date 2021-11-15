@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "py_imports"
-version = "1.1.0"
+version = "1.2.0"
 description = "Python Toolkit to imports introspection"
 authors = ["Andres <andresbenavides404@gmail.com>"]
 readme = "README.md"
