@@ -22,7 +22,7 @@ class ImportStatement:
         """
         self.line = line
         self.children = children
-        self.statement = statement
+        self.statement = statement.strip()
 
         self.from_internal: bool = False
         self.children_unused: List = kwargs.pop("children_unused", [])
