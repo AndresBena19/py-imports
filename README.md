@@ -230,14 +230,14 @@ standard_imports = collector_object.imports
     information just using a static analysis.**
 </details>
 
-### If the imports is located inside a function, class or inner scope 
+### If the imports are located inside an inner scope ex. function, class, etc. 
 
 <details>
   <summary>If the position of the import statement ...<code>in_inner_scope...</code></summary>
     
   - ### Imports in inner scopes
-    If some imports is located inside a function, class or inner scope, the import object will contain a boolean field 
-    named `in_inner_scope` indicating if is located outside his default position (the top of the file in the global scope),
+    If some imports are located inside an inner scope, the import object will contain a boolean field 
+    named `in_inner_scope` indicating that is located outside his default position (the top of the file or in the global scope),
     also will be included an attribute named `outer_parent_node` that will contain the `AST` node, to allow the user get more information
     about the data structure node parent that is around the import.
 
