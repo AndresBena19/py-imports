@@ -255,7 +255,7 @@ standard_imports = collector_object.imports
     absolute_imports[0].in_inner_scope -> True
     
     # it's possible to get the ast node parent with
-    absolute_imports[0].outer_parent_node -> 
+    absolute_imports[0].outer_parent_node -> ast.AST object
 </details>
 
 ## Notes
