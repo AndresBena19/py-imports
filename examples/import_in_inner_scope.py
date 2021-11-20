@@ -11,7 +11,7 @@ with PyImports() as manager:
 
 absolute_import_found = imports_file.absolute_imports[0]
 
-print(absolute_import_found.in_inner_scop)
+print(absolute_import_found.in_inner_scope)
 
 # The function parent name must be foo
-print(absolute_import_found.in_inner_scope)
+print(absolute_import_found.outer_parent_node)
