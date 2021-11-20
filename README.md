@@ -16,6 +16,9 @@
 <a href="https://pypi.org/project/py-imports" target="_blank">
     <img src="https://img.shields.io/pypi/pyversions/py_imports.svg?color=%2334D058" alt="Supported Python versions">
 </a>
+<a href="https://results.pre-commit.ci/latest/github/pre-commit/pre-commit/master">
+    <img src="https://results.pre-commit.ci/badge/github/pre-commit/pre-commit/master.svg" alt="pre-commit.ci status" style="max-width:100%;">
+</a>
 </p>
 
 
@@ -23,7 +26,7 @@
 
 **Source Code**: <a href="https://github.com/andresbena19/py-imports" target="_blank"> https://github.com/andresbena19/py-imports
 </a>
-## Requirements :wrench: :hammer: :nut_and_bolt:
+## Requirements
 
 Python 3.7+
 
@@ -31,7 +34,7 @@ py-imports stands on the shoulders of giants:
 
 * <a href="https://docs.python.org/3/library/ast.html" class="external-link" target="_blank">ast — Abstract Syntax Trees</a> to traverse python code.
 
-## Installation :computer:
+## Installation
 
 <div class="termy">
 
@@ -45,7 +48,7 @@ All it's ready to begin
 
 </div>
 
-## Example :paperclip:
+## Example
 
 ### Introspect it
 
@@ -131,66 +134,79 @@ standard_imports = collector_object.imports
 </details>
 
 
-### Now you know more about you... :lotus_position:
-## Features :sunny:
-### :sunglasses: Classify the imports found into three groups
-      -  Python Abstract Grammar
+### Now you know more about you... 
+## Features
+### Classify the imports found into three groups
+
+<details>
+  <summary>The util allow identifying and group the imports according  ...<code>relative imports, absolu...</code></summary>
+
+   - ### Python Abstract Grammar
+     The util allow identifying and group the imports according to the abstract grammar defined with python
+
+          ...
           | Import(alias* names)
           | ImportFrom(identifier? module, alias* names, int? level)
 
-   - ### Relative Imports  
+   - ### Import types 
+     - ### Relative Imports  
     
-      Relative imports use leading dots. A single leading dot indicates a relative import, starting with the current package. 
-      Two or more leading dots indicate a relative import to the parent(s) of the current package, one level per dot after the first.
+        Relative imports use leading dots. A single leading dot indicates a relative import, starting with the current package. 
+        Two or more leading dots indicate a relative import to the parent(s) of the current package, one level per dot after the first.
    
-      - #### Schema syntax
-        Relative imports must always use `from <> import`;`import <> `is always absolute.
-        - **pydocs**: https://docs.python.org/3/reference/import.html#package-relative-imports
-        - Metadata will be abstracted in `RelativeImportStatement` objects.
-      - #### Ex.
-        ```Python   
-        from .moduleY import spam
-        from .moduleY import spam as ham
-        from . import moduleY
-        from ..subpackage1 import moduleY
-        from ..subpackage2.moduleZ import eggs
-        from ..moduleA import foo
-        from ...package import bar
-        from ...sys import path
-        ```
+        - #### Schema syntax
+          Relative imports must always use `from <> import`;`import <> `is always absolute.
+          - **pydocs**: https://docs.python.org/3/reference/import.html#package-relative-imports
+          - Metadata will be abstracted in `RelativeImportStatement` objects.
+        - #### Ex.
+          ```Python   
+          from .moduleY import spam
+          from .moduleY import spam as ham
+          from . import moduleY
+          from ..subpackage1 import moduleY
+          from ..subpackage2.moduleZ import eggs
+          from ..moduleA import foo
+          from ...package import bar
+          from ...sys import path
+          ```
         
-   - ### Absolute Imports  
-      Absolute import involves full path i.e., from the project’s root folder to the desired module. An absolute import state that the resource   
-      to be imported using its full path from the project’s root folder.
+     - ### Absolute Imports  
+        Absolute import involves full path i.e., from the project’s root folder to the desired module. An absolute import state that the resource   
+        to be imported using its full path from the project’s root folder.
       
-      - #### Schema syntax
-         Absolute imports may use either the `import <>` or `from <> import <>` syntax, but relative imports may only use the second form.
-         - **PEP328**: https://www.python.org/dev/peps/pep-0328/
-         - Metadata will be abstracted in `AbsoluteImportStatement` objects.
-      - #### Ex.
-        ```Python
-        from moduleY import spam
-        from moduleY import spam as ham
+        - #### Schema syntax
+           Absolute imports may use either the `import <>` or `from <> import <>` syntax, but relative imports may only use the second form.
+           - **PEP328**: https://www.python.org/dev/peps/pep-0328/
+           - Metadata will be abstracted in `AbsoluteImportStatement` objects.
+        - #### Ex.
+          ```Python
+          from moduleY import spam
+          from moduleY import spam as ham
     
-        # OR
+          # OR
       
-        import XXX.YYY.ZZZ
-        ```
-   - ### Standard Imports  
-      Standard imports will be introspected and the data about it will be saved in an
-      object named `ImportStatement`.
+          import XXX.YYY.ZZZ
+          ```
+     - ### Standard Imports  
+        Standard imports will be introspected and the data about it will be saved in an
+        object named `ImportStatement`.
    
-      - #### Schema syntax
-         standard imports use  the `import <>`  syntax.
-         - **PEP328**: https://www.python.org/dev/peps/pep-0328/
-         - Metadata will be abstracted in `ImportStatement` objects.
-      - #### Ex.
-        ```Python
-        import moduleY
-        import moduleX
-        ```
+        - #### Schema syntax
+           standard imports use  the `import <>`  syntax.
+           - **PEP328**: https://www.python.org/dev/peps/pep-0328/
+           - Metadata will be abstracted in `ImportStatement` objects.
+        - #### Ex.
+          ```Python
+          import moduleY
+          import moduleX
+          ```
+</details>
+        
+### If the imports are being used 
 
-### :sunglasses: Validate if the imports are being used 
+<details>
+  <summary>If some child it's not used in an import  ...<code>children_unused...</code></summary>
+
  - ### Unused imports 
     If some child it's not used in an import, this will be added in  `children_unused` attribute in every concrete implementation that represent an imports.
  
@@ -205,16 +221,46 @@ standard_imports = collector_object.imports
     ...  # After introspect the file
     
     relative_imports = imports_file.relative_imports
-    relative_imports[0].children_unused = ["moduleY"]
+    relative_imports[0].children_unused -> ["moduleY"]
     
     # But the total of children present in this file 
-    relative_imports[0].children = ["moduleY", "moduleZ"]
+    relative_imports[0].children -> ["moduleY", "moduleZ"]
     ```
-   :eyes: **it's used `pyflakes` to determine the unused imports, because follow the same philosophy to get the 
+   **it's used `pyflakes` to determine the unused imports, because follow the same philosophy to get the 
     information just using a static analysis.**
-## Notes :bookmark:
+</details>
+
+### If the imports are located inside an inner scope ex. function, class, etc. 
+
+<details>
+  <summary>If the position of the import statement ...<code>in_inner_scope...</code></summary>
+    
+  - ### Imports in inner scopes
+    If some imports are located inside an inner scope, the import object will contain a boolean field 
+    named `in_inner_scope` indicating that is located outside his default position (the top of the file or in the global scope),
+    also will be included an attribute named `outer_parent_node` that will contain the `AST` node, to allow the user get more information
+    about the data structure node parent that is around the import.
+
+     ```Python 
+     def foo():
+        from pkg import moduleY, moduleZ
+     ...
+      ```
+    In this case the absolute import is located inside a function named `foo`.
+    
+    ```Python
+    ...  # After introspect the file
+    
+    absolute_imports = imports_file.absolute_imports
+    absolute_imports[0].in_inner_scope -> True
+    
+    # it's possible to get the ast node parent with
+    absolute_imports[0].outer_parent_node -> ast.AST object
+</details>
+
+## Notes
 
 This library does not execute any part of the python  target code, this just make a static analysis over the code to describe the meta information about the imports in the file.
-## License :traffic_light:
+## License
 
 This project is licensed under the terms of the MIT license.

@@ -21,6 +21,18 @@ class AstImportAnalyzer(UnUsedImportMixin, ast.NodeVisitor):
         self._imports_collector = ImportsCollectionFile()
         self._unused_imports = self.get_unused_import()
 
+    def visit(self, node: Any) -> Any:
+        """Visit a node."""
+        method = "visit_" + node.__class__.__name__
+        visitor = getattr(self, method, self.generic_visit)
+
+        # Set a parent in child to every node traversed
+        for child in ast.iter_child_nodes(node):
+            parent: ast.AST = node
+            setattr(child, "parent", parent)
+
+        return visitor(node)
+
     def visit_Import(self, node: ast.Import) -> Any:
         """
         Capture the import statements that not used "from" keyword
@@ -32,11 +44,15 @@ class AstImportAnalyzer(UnUsedImportMixin, ast.NodeVisitor):
         """
         imports: List[str] = [pkg_name.name for pkg_name in node.names]
 
+        parent_node = node.parent  # type: ignore
+        is_in_inner_scope = not isinstance(parent_node, ast.Module)
+
         self._imports_collector.register_import(
             line=node.lineno,
             children=imports,
             statement=self.file_content[node.lineno - 1],
             children_unused=self._unused_imports.get(node.lineno, []),
+            outer_parent_node=parent_node if is_in_inner_scope else None,
         )
         self.generic_visit(node)
 
@@ -56,6 +72,10 @@ class AstImportAnalyzer(UnUsedImportMixin, ast.NodeVisitor):
             to import the object
         """
         imports: List[str] = [alias.name for alias in node.names]
+
+        parent_node = node.parent  # type: ignore
+        is_in_inner_scope = not isinstance(parent_node, ast.Module)
+
         self._imports_collector.register_import_from(
             line=node.lineno,
             children=imports,
@@ -63,6 +83,7 @@ class AstImportAnalyzer(UnUsedImportMixin, ast.NodeVisitor):
             level=node.level,
             statement=self.file_content[node.lineno - 1],
             children_unused=self._unused_imports.get(node.lineno, []),
+            outer_parent_node=parent_node if is_in_inner_scope else None,
         )
         self.generic_visit(node)
 

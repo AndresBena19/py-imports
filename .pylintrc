@@ -14,7 +14,7 @@ ignore=CVS, pip-wheel-metadata, docs, htmlcov, .git, __pycache__, old, build, di
 
 # Add files or directories matching the regex patterns to the blacklist. The
 # regex matches against base names, not paths.
-ignore-patterns=module_file.py,module_file_two.py,introspect_myself.py
+ignore-patterns=module_file.py,module_file_two.py,introspect_myself.py,in_inner_scope.py,import_in_inner_scope.py
 
 # Python code to execute, usually for sys.path manipulation such as
 # pygtk.require().
@@ -564,7 +564,7 @@ valid-metaclass-classmethod-first-arg=cls
 max-args=6
 
 # Maximum number of attributes for a class (see R0902).
-max-attributes=7
+max-attributes=12
 
 # Maximum number of boolean expressions in an if statement (see R0916).
 max-bool-expr=5

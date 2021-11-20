@@ -1,4 +1,5 @@
 """Integration test cases to validate the properly parse of python imports"""
+import ast
 from typing import Callable, List, Tuple
 
 from py_imports.base.models import ImportStatement
@@ -191,3 +192,31 @@ class TestPyImports:
 
             assert len(import_unused_found) == 2
             assert import_unused_found == ["django", "foo"]
+
+    def test_get_imports_in_inner_scope(
+        self,
+        set_up_file: Callable,
+    ) -> None:
+        """
+        Validate if an import located in an inner scope like a class or
+        function are capture
+
+        Notes:
+            Cases:
+                def foo():
+                    from module1.doo import django
+
+        Expected results:
+            * The import found must have the attribute in_inner_scope in False
+            * The outer parent of the imports must be a function
+        """
+        file_path = set_up_file("""def foo():\n    from module1.doo import django""")
+
+        with self.entry_point() as handler:  # type: ignore
+            imports = handler.get_imports(file_path)  # type: ignore
+
+            assert imports, "Any import was found"
+            first_absolute_imports = imports.absolute_imports[0]
+
+            assert first_absolute_imports.in_inner_scope
+            assert isinstance(first_absolute_imports.outer_parent_node, ast.FunctionDef)
