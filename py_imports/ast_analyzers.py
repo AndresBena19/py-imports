@@ -1,16 +1,9 @@
 """ast classes to parse py files"""
 import ast
-from typing import Any, List, Protocol, cast, runtime_checkable
+from typing import Any, List
 
 from py_imports.base import ImportsCollectionFile
 from py_imports.mixins import UnUsedImportMixin
-
-
-@runtime_checkable
-class ParentProto(Protocol):
-    """Annotated AST with extra attributes"""
-
-    parent: ast.AST
 
 
 class AstImportAnalyzer(UnUsedImportMixin, ast.NodeVisitor):
@@ -51,8 +44,8 @@ class AstImportAnalyzer(UnUsedImportMixin, ast.NodeVisitor):
         """
         imports: List[str] = [pkg_name.name for pkg_name in node.names]
 
-        outer_parent_import = cast(ParentProto, node).parent
-        is_in_outer_import = not isinstance(cast(ParentProto, node).parent, ast.Module)
+        outer_parent_import = node.parent  # type: ignore
+        is_in_outer_import = not isinstance(outer_parent_import, ast.Module)
 
         self._imports_collector.register_import(
             line=node.lineno,
@@ -80,8 +73,8 @@ class AstImportAnalyzer(UnUsedImportMixin, ast.NodeVisitor):
         """
         imports: List[str] = [alias.name for alias in node.names]
 
-        outer_parent_import = cast(ParentProto, node).parent
-        is_in_outer_import = not isinstance(cast(ParentProto, node).parent, ast.Module)
+        outer_parent_import = node.parent  # type: ignore
+        is_in_outer_import = not isinstance(outer_parent_import, ast.Module)
 
         self._imports_collector.register_import_from(
             line=node.lineno,
