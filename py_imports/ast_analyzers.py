@@ -44,15 +44,15 @@ class AstImportAnalyzer(UnUsedImportMixin, ast.NodeVisitor):
         """
         imports: List[str] = [pkg_name.name for pkg_name in node.names]
 
-        outer_parent_import = node.parent  # type: ignore
-        is_in_outer_import = not isinstance(outer_parent_import, ast.Module)
+        parent_node = node.parent  # type: ignore
+        is_in_inner_scope = not isinstance(parent_node, ast.Module)
 
         self._imports_collector.register_import(
             line=node.lineno,
             children=imports,
             statement=self.file_content[node.lineno - 1],
             children_unused=self._unused_imports.get(node.lineno, []),
-            outer_parent_node=outer_parent_import if is_in_outer_import else None,
+            outer_parent_node=parent_node if is_in_inner_scope else None,
         )
         self.generic_visit(node)
 
@@ -73,8 +73,8 @@ class AstImportAnalyzer(UnUsedImportMixin, ast.NodeVisitor):
         """
         imports: List[str] = [alias.name for alias in node.names]
 
-        outer_parent_import = node.parent  # type: ignore
-        is_in_outer_import = not isinstance(outer_parent_import, ast.Module)
+        parent_node = node.parent  # type: ignore
+        is_in_inner_scope = not isinstance(parent_node, ast.Module)
 
         self._imports_collector.register_import_from(
             line=node.lineno,
@@ -83,7 +83,7 @@ class AstImportAnalyzer(UnUsedImportMixin, ast.NodeVisitor):
             level=node.level,
             statement=self.file_content[node.lineno - 1],
             children_unused=self._unused_imports.get(node.lineno, []),
-            outer_parent_node=outer_parent_import if is_in_outer_import else None,
+            outer_parent_node=parent_node if is_in_inner_scope else None,
         )
         self.generic_visit(node)
 
