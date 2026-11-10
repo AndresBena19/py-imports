@@ -1,14 +1,24 @@
 """AST classes to parse py files."""
 
 import ast
+from collections.abc import Sequence
 from typing import Any
 
 from py_imports.base.models import (
     AbsoluteImportStatement,
+    Guard,
+    GuardCategory,
+    GuardKind,
     ImportedName,
     ImportsCollectionFile,
     ImportStatement,
     RelativeImportStatement,
+)
+from py_imports.guards import (
+    condition_category,
+    handler_catches_import_error,
+    suppresses_import_error,
+    type_checking_test,
 )
 from py_imports.mixins import UnUsedImportMixin
 
@@ -21,7 +31,8 @@ class AstImportAnalyzer(UnUsedImportMixin, ast.NodeVisitor):
 
     An import is "in an inner scope" only when it is defined inside a function or a
     class. Module-level guards such as ``if TYPE_CHECKING:``, ``try/except
-    ImportError`` or ``if sys.version_info`` keep the import in the module scope.
+    ImportError`` or ``if sys.version_info`` keep the import in the module scope;
+    they are reported in ``guards`` instead.
     """
 
     def __init__(
@@ -43,6 +54,7 @@ class AstImportAnalyzer(UnUsedImportMixin, ast.NodeVisitor):
         self._imports_collector = ImportsCollectionFile()
         self._unused_imports = self.get_unused_import(tree)
         self._scopes: list[ScopeNode] = []
+        self._guards: list[Guard] = []
 
     def _visit_scope(self, node: ScopeNode) -> None:
         """Track the function/class being traversed (the AST itself is not modified)."""
@@ -55,6 +67,150 @@ class AstImportAnalyzer(UnUsedImportMixin, ast.NodeVisitor):
     visit_FunctionDef = _visit_scope
     visit_AsyncFunctionDef = _visit_scope
     visit_ClassDef = _visit_scope
+
+    def _visit_guarded(self, statements: Sequence[ast.stmt], guard: Guard) -> None:
+        """Visit a block of statements while ``guard`` applies to them."""
+        if not statements:
+            return
+        self._guards.append(guard)
+        try:
+            for statement in statements:
+                self.visit(statement)
+        finally:
+            self._guards.pop()
+
+    def _visit_body_and_else(
+        self,
+        node: ast.If | ast.For | ast.AsyncFor | ast.While,
+        kind: GuardKind,
+        condition: str,
+        body_category: GuardCategory | None = None,
+        else_category: GuardCategory | None = None,
+    ) -> None:
+        """Visit the ``body`` and ``orelse`` blocks of an if/for/while statement."""
+        self._visit_guarded(
+            node.body,
+            Guard(
+                kind=kind,
+                branch="body",
+                line=node.lineno,
+                condition=condition,
+                category=body_category,
+            ),
+        )
+        self._visit_guarded(
+            node.orelse,
+            Guard(
+                kind=kind,
+                branch="orelse",
+                line=node.lineno,
+                condition=condition,
+                category=else_category,
+            ),
+        )
+
+    def visit_If(self, node: ast.If) -> None:
+        """Track ``if``/``elif``/``else`` blocks."""
+        is_type_checking = type_checking_test(node.test)
+        body_category: GuardCategory | None
+        else_category: GuardCategory | None
+        if is_type_checking is None:
+            body_category = else_category = condition_category(node.test)
+        elif is_type_checking:
+            body_category, else_category = "type_checking", "not_type_checking"
+        else:
+            body_category, else_category = "not_type_checking", "type_checking"
+        self._visit_body_and_else(
+            node, "if", ast.unparse(node.test), body_category, else_category
+        )
+
+    def visit_Try(self, node: ast.Try | ast.TryStar) -> None:
+        """Track ``try``/``except``/``else``/``finally`` blocks."""
+        catches_import_error = any(
+            handler_catches_import_error(handler) for handler in node.handlers
+        )
+        self._visit_guarded(
+            node.body,
+            Guard(
+                kind="try",
+                branch="body",
+                line=node.lineno,
+                category="import_attempt" if catches_import_error else None,
+            ),
+        )
+        for handler in node.handlers:
+            self._visit_guarded(
+                handler.body,
+                Guard(
+                    kind="try",
+                    branch="handler",
+                    line=handler.lineno,
+                    condition=ast.unparse(handler.type) if handler.type else None,
+                    category=(
+                        "import_fallback"
+                        if handler_catches_import_error(handler)
+                        else None
+                    ),
+                ),
+            )
+        self._visit_guarded(
+            node.orelse, Guard(kind="try", branch="orelse", line=node.lineno)
+        )
+        self._visit_guarded(
+            node.finalbody, Guard(kind="try", branch="finalbody", line=node.lineno)
+        )
+
+    visit_TryStar = visit_Try
+
+    def visit_With(self, node: ast.With | ast.AsyncWith) -> None:
+        """Track ``with suppress(ImportError):`` blocks; other ``with`` are ignored."""
+        if not any(suppresses_import_error(item) for item in node.items):
+            self.generic_visit(node)
+            return
+        self._visit_guarded(
+            node.body,
+            Guard(
+                kind="with",
+                branch="body",
+                line=node.lineno,
+                condition=", ".join(ast.unparse(item) for item in node.items),
+                category="import_attempt",
+            ),
+        )
+
+    visit_AsyncWith = visit_With
+
+    def visit_For(self, node: ast.For | ast.AsyncFor) -> None:
+        """Track ``for`` loops (their body may never run)."""
+        condition = f"{ast.unparse(node.target)} in {ast.unparse(node.iter)}"
+        self._visit_body_and_else(node, "for", condition)
+
+    visit_AsyncFor = visit_For
+
+    def visit_While(self, node: ast.While) -> None:
+        """Track ``while`` loops."""
+        category = condition_category(node.test)
+        self._visit_body_and_else(
+            node, "while", ast.unparse(node.test), category, category
+        )
+
+    def visit_Match(self, node: ast.Match) -> None:
+        """Track ``match``/``case`` blocks."""
+        subject = ast.unparse(node.subject)
+        for case in node.cases:
+            condition = f"{subject}: {ast.unparse(case.pattern)}"
+            if case.guard is not None:
+                condition += f" if {ast.unparse(case.guard)}"
+            self._visit_guarded(
+                case.body,
+                Guard(
+                    kind="match",
+                    branch="case",
+                    line=case.pattern.lineno,
+                    condition=condition,
+                    category=condition_category(node.subject),
+                ),
+            )
 
     def _statement(self, node: ast.stmt) -> str:
         """Get the source text of the import statement (supports multi-line imports)."""
@@ -78,6 +234,7 @@ class AstImportAnalyzer(UnUsedImportMixin, ast.NodeVisitor):
                 for alias in node.names
             ),
             "scope": ".".join(scope.name for scope in self._scopes) or None,
+            "guards": tuple(self._guards),
             "outer_parent_node": self._scopes[-1] if self._scopes else None,
         }
 

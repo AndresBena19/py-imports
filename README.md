@@ -259,6 +259,37 @@ standard_imports = collector_object.imports
     ```
 </details>
 
+### Guard context: TYPE_CHECKING, optional imports, version checks...
+
+Every import has a `guards` tuple with the `if`/`try`/`with suppress(...)`/`match`/loop blocks around it, from the
+outermost to the innermost (blocks outside the enclosing function or class included). Each `Guard` has a `kind`,
+the `branch` holding the import (`body`, `orelse`, `handler`, `finalbody`, `case`), its `line`, the source of its
+`condition` and, for well-known patterns, a `category`:
+
+| `category` | Pattern | Shortcut property |
+|---|---|---|
+| `type_checking` | body of `if TYPE_CHECKING:` (or `else` of `if not TYPE_CHECKING:`) | `is_type_checking_only` |
+| `not_type_checking` | `else` of `if TYPE_CHECKING:` (or body of `if not TYPE_CHECKING:`) | |
+| `import_attempt` | `try` body (or `with suppress(...)`) handling `ImportError`/`ModuleNotFoundError` | `is_optional` |
+| `import_fallback` | `except ImportError:` handler | `is_fallback` |
+| `version_check` | condition on `sys.version_info` / `sys.hexversion` | `is_version_dependent` |
+| `platform_check` | condition on `sys.platform`, `os.name`, `platform.*`, `sys.implementation` | `is_platform_dependent` |
+
+`is_conditional` is `True` when there is any guard. Handlers for `Exception`, `BaseException` and bare `except:`
+also count as catching `ImportError`.
+
+```Python
+# try:
+#     import ujson as json
+# except ImportError:
+#     import json
+attempt, fallback = imports_file.imports
+attempt.is_optional    -> True
+fallback.is_fallback   -> True
+fallback.guards[0]     -> Guard(kind='try', branch='handler', line=3, condition='ImportError',
+                                category='import_fallback')
+```
+
 ### Typed data model
 
 Every import is an immutable (frozen, slotted) dataclass, also importable from the package root:
@@ -269,7 +300,7 @@ Every import is an immutable (frozen, slotted) dataclass, also importable from t
 | `AbsoluteImportStatement` | `from a.b import c` | `module`, `level == 0` |
 | `RelativeImportStatement` | `from ..a import b` | `module`, `level > 0` |
 
-Common fields: `line`, `end_line`, `column`, `statement`, `names`, `scope`, `outer_parent_node`.
+Common fields: `line`, `end_line`, `column`, `statement`, `names`, `scope`, `guards`, `outer_parent_node`.
 Each entry of `names` is an `ImportedName(name, asname, unused)`. The previous attributes are still available as
 read-only properties: `children`, `aliases`, `children_unused`, `in_inner_scope`, `kind` and `parent` (alias of `module`).
 
@@ -296,7 +327,7 @@ print(json.dumps(imports_file.to_dict(), indent=2))
 # {"imports": [{"kind": "import", "line": 1, "end_line": 1, "column": 0,
 #               "statement": "import numpy as np",
 #               "names": [{"name": "numpy", "asname": "np", "unused": false}],
-#               "in_inner_scope": false, "scope": null}],
+#               "in_inner_scope": false, "scope": null, "guards": []}],
 #  "absolute_imports": [...], "relative_imports": [...]}
 ```
 

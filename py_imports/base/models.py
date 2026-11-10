@@ -11,6 +11,60 @@ from typing import Any, Literal
 
 ImportKind = Literal["import", "absolute", "relative"]
 
+GuardKind = Literal["if", "try", "with", "match", "for", "while"]
+GuardBranch = Literal["body", "orelse", "handler", "finalbody", "case"]
+GuardCategory = Literal[
+    "type_checking",
+    "not_type_checking",
+    "import_attempt",
+    "import_fallback",
+    "version_check",
+    "platform_check",
+]
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class Guard:
+    """A block that conditions whether an import runs.
+
+    Attributes:
+        kind: Statement that opens the block (``if``, ``try``, ``with``...).
+        branch: Part of the statement holding the import: ``body``, ``orelse``
+            (``else``/``elif``), ``handler`` (``except``), ``finalbody`` or ``case``.
+        line: Line of the ``if``/``try``/... statement, or of the ``except``/``case``
+            clause for ``handler``/``case`` branches.
+        condition: Source of the condition: the ``if``/``while`` test, the handled
+            exceptions of an ``except``, the ``with`` items, the ``for`` target and
+            iterator, the ``match`` subject and ``case`` pattern. ``None`` when there
+            is no condition (e.g. ``try`` body, bare ``except``).
+        category: Well-known pattern the guard matches, if any:
+
+            * ``type_checking``: body of ``if TYPE_CHECKING:``
+            * ``not_type_checking``: its ``else``, or body of ``if not TYPE_CHECKING:``
+            * ``import_attempt``: ``try`` body (or ``with suppress(...)``) whose
+              handlers catch ``ImportError``
+            * ``import_fallback``: ``except ImportError`` handler
+            * ``version_check``: condition on ``sys.version_info`` / ``sys.hexversion``
+            * ``platform_check``: condition on ``sys.platform``, ``os.name``,
+              ``platform.*`` or ``sys.implementation``
+    """
+
+    kind: GuardKind
+    branch: GuardBranch
+    line: int
+    condition: str | None = None
+    category: GuardCategory | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-serializable representation."""
+        return {
+            "kind": self.kind,
+            "branch": self.branch,
+            "line": self.line,
+            "condition": self.condition,
+            "category": self.category,
+        }
+
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ImportedName:
@@ -50,6 +104,9 @@ class ImportStatement:
         column: 0-based column where the statement starts.
         scope: Dotted name of the enclosing functions/classes (e.g.
             ``"Service.run"``), ``None`` for module-level imports.
+        guards: Enclosing ``if``/``try``/``with``/``match``/loop blocks, from the
+            outermost to the innermost (including blocks outside the enclosing
+            function or class). Empty for unconditional imports.
         outer_parent_node: Nearest enclosing ``FunctionDef``/``AsyncFunctionDef``/
             ``ClassDef`` node, ``None`` for module-level imports. Excluded from
             equality, ``repr`` and ``to_dict()``.
@@ -61,6 +118,7 @@ class ImportStatement:
     end_line: int | None = None
     column: int = 0
     scope: str | None = None
+    guards: tuple[Guard, ...] = ()
     outer_parent_node: ast.AST | None = field(default=None, repr=False, compare=False)
 
     @property
@@ -72,6 +130,39 @@ class ImportStatement:
     def in_inner_scope(self) -> bool:
         """Whether the import is defined inside a function or a class."""
         return self.scope is not None or self.outer_parent_node is not None
+
+    def _has_category(self, *categories: GuardCategory) -> bool:
+        return any(guard.category in categories for guard in self.guards)
+
+    @property
+    def is_conditional(self) -> bool:
+        """Whether the import is inside any ``if``/``try``/``with``/``match``/loop."""
+        return bool(self.guards)
+
+    @property
+    def is_type_checking_only(self) -> bool:
+        """Whether the import only runs for type checkers (``if TYPE_CHECKING:``)."""
+        return self._has_category("type_checking")
+
+    @property
+    def is_optional(self) -> bool:
+        """Whether the import is attempted in a ``try`` that handles ``ImportError``."""
+        return self._has_category("import_attempt")
+
+    @property
+    def is_fallback(self) -> bool:
+        """Whether the import is the fallback in an ``except ImportError`` handler."""
+        return self._has_category("import_fallback")
+
+    @property
+    def is_version_dependent(self) -> bool:
+        """Whether the import depends on a Python version check."""
+        return self._has_category("version_check")
+
+    @property
+    def is_platform_dependent(self) -> bool:
+        """Whether the import depends on a platform check."""
+        return self._has_category("platform_check")
 
     @property
     def children(self) -> list[str]:
@@ -99,6 +190,7 @@ class ImportStatement:
             "names": [item.to_dict() for item in self.names],
             "in_inner_scope": self.in_inner_scope,
             "scope": self.scope,
+            "guards": [guard.to_dict() for guard in self.guards],
         }
 
 
