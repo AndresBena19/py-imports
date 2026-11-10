@@ -1,38 +1,29 @@
-"""Example to introspect the same file that is execution the introspection"""
-import logging
+"""Example to introspect the same file that is executing the introspection."""
+import logging  # noqa: F401 (intentionally unused, shows up in `children_unused`)
+from pathlib import Path
 
 from py_imports.manager import PyImports
 
-from .parse_local_dir import file_imports_from_dir_one
 
-
-MYSELF = "main.py"
+MYSELF = Path(__file__)
 
 # Let's introspect myself
 with PyImports() as manager:
-    imports_file = manager.get_imports(MYSELF)
-
+    collector_object = manager.get_imports(MYSELF)
 
 # Get details about the absolute, relative and standard imports in the file
-collector_object = imports_file.get(MYSELF)
 absolute_imports = collector_object.absolute_imports
 relative_imports = collector_object.relative_imports
 standard_imports = collector_object.imports
 
 # Absolute imports
-#  --- from py_imports.manager import PyImports ---
-# If we introspect the object, we will get the next
+#  --- from pathlib import Path ---
 example_abs_import = absolute_imports[0]
+print(example_abs_import.parent, example_abs_import.children)  # pathlib ['Path']
 
-
-# relative imports
-#  --- from .parse_local_dir import file_imports_from_dir_one ---
-# If we introspect the object, we will get the next
-example_relative_import = relative_imports[0]
-
-# standard imports
+# Standard imports
 #  --- import logging ---
-# If we introspect the object, we will get the next
 example_standard_import = standard_imports[0]
+print(example_standard_import.children_unused)  # ['logging']
 
 # Now you know more about you...

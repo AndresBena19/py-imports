@@ -1,26 +1,24 @@
-"""Integration test cases to validate the properly parse of python imports"""
+"""Integration test cases to validate the properly parse of python imports."""
+
 import ast
-from typing import Callable, List, Tuple
 
 from py_imports.base.models import ImportStatement
 from py_imports.manager import PyImports
+from tests.conftest import FileFactory
 
 
 class TestPyImports:
-    """
-    Test cases to validate the properly parse of imports in .py file
-    """
+    """Test cases to validate the properly parse of imports in .py file."""
 
     entry_point = PyImports
 
     def test_get_absolute_import_in_a_local_file(
         self,
-        set_up_file: Callable,
+        set_up_file: FileFactory,
     ) -> None:
-        """
-        Validate if the import in a .py file are properly parse
+        """Validate if the import in a .py file are properly parse
         Args:
-            set_up_file: Dynamic fixture to create .py test file
+            set_up_file: Dynamic fixture to create .py test file.
 
         Notes:
             Test case:
@@ -36,8 +34,8 @@ class TestPyImports:
             * The import must be placed in the first line
         """
         file_path = set_up_file("""from flask import request""")
-        with self.entry_point() as handler:  # type: ignore
-            imports = handler.get_imports(file_path)  # type: ignore
+        with self.entry_point() as handler:
+            imports = handler.get_file_imports(file_path)
 
             assert imports, "Any import was found"
             assert imports.absolute_imports, "Any absolute import was found"
@@ -53,12 +51,11 @@ class TestPyImports:
 
     def test_get_relative_import_in_a_local_file(
         self,
-        set_up_file: Callable,
+        set_up_file: FileFactory,
     ) -> None:
-        """
-        Validate if the relative imports in a .py file are properly parse
+        """Validate if the relative imports in a .py file are properly parse
         Args:
-            set_up_file: Dynamic fixture to create .py test file
+            set_up_file: Dynamic fixture to create .py test file.
 
         Notes:
             Test case:
@@ -71,8 +68,8 @@ class TestPyImports:
             * The import must be placed in the first line
         """
         file_path = set_up_file("""from ... import request""")
-        with self.entry_point() as handler:  # type: ignore
-            imports = handler.get_imports(file_path)  # type: ignore
+        with self.entry_point() as handler:
+            imports = handler.get_file_imports(file_path)
 
             assert imports, "Any import was found"
             assert imports.relative_imports, "Any relative import was found"
@@ -84,13 +81,12 @@ class TestPyImports:
 
     def test_get_import_without_statement_from_in_a_local_file(
         self,
-        set_up_file: Callable,
+        set_up_file: FileFactory,
     ) -> None:
-        """
-        Validate if the imports without from statements in a .py file are
+        """Validate if the imports without from statements in a .py file are
         properly parse
         Args:
-            set_up_file: Dynamic fixture to create .py test file
+            set_up_file: Dynamic fixture to create .py test file.
 
         Notes:
             Test case:
@@ -102,11 +98,11 @@ class TestPyImports:
             * The import must be placed in the first line
         """
         file_path = set_up_file("""import flask""")
-        with self.entry_point() as handler:  # type: ignore
-            imports = handler.get_imports(file_path)  # type: ignore
+        with self.entry_point() as handler:
+            imports = handler.get_file_imports(file_path)
 
             assert imports, "Any import was found"
-            imports_without_from_statement_found: List[ImportStatement] = imports.imports
+            imports_without_from_statement_found: list[ImportStatement] = imports.imports
             import_found = imports_without_from_statement_found[0].children
 
             assert len(imports_without_from_statement_found) == 1
@@ -114,10 +110,9 @@ class TestPyImports:
             assert imports_without_from_statement_found[0].line == 1
 
     def test_get_import_in_a_local_directory(
-        self, py_package: Tuple[str, List[str]]
+        self, py_package: tuple[str, list[str]]
     ) -> None:
-        """
-        Validate if it's correctly parse the .py files found in a folder or package
+        """Validate if it's correctly parse the .py files found in a folder or package.
 
         Notes:
             Test case:
@@ -147,9 +142,9 @@ class TestPyImports:
         dir_path, file_paths = py_package
         [first_file, second_file, third_file] = file_paths
 
-        with self.entry_point() as handler:  # type: ignore
+        with self.entry_point() as handler:
             handler.get_imports(dir_path)
-            imports = handler.imports_resume()  # type: ignore
+            imports = handler.imports_resume()
 
             assert len(imports.keys()) == len(file_paths)
             assert len(imports[first_file].imports) == 0
@@ -164,10 +159,9 @@ class TestPyImports:
 
     def test_get_imports_in_a_local_file_with_unused_imports(
         self,
-        set_up_file: Callable,
+        set_up_file: FileFactory,
     ) -> None:
-        """
-        Validate if the metadata about unused import are properly defined
+        """Validate if the metadata about unused import are properly defined.
 
         Notes:
             Cases:
@@ -184,8 +178,8 @@ class TestPyImports:
             """import flask\nfrom module1.doo import django, foo\nflask()"""
         )
 
-        with self.entry_point() as handler:  # type: ignore
-            imports = handler.get_imports(file_path)  # type: ignore
+        with self.entry_point() as handler:
+            imports = handler.get_file_imports(file_path)
 
             assert imports, "Any import was found"
             import_unused_found = imports.absolute_imports[0].children_unused
@@ -195,11 +189,10 @@ class TestPyImports:
 
     def test_get_imports_in_inner_scope(
         self,
-        set_up_file: Callable,
+        set_up_file: FileFactory,
     ) -> None:
-        """
-        Validate if an import located in an inner scope like a class or
-        function are capture
+        """Validate if an import located in an inner scope like a class or
+        function are capture.
 
         Notes:
             Cases:
@@ -212,8 +205,8 @@ class TestPyImports:
         """
         file_path = set_up_file("""def foo():\n    from module1.doo import django""")
 
-        with self.entry_point() as handler:  # type: ignore
-            imports = handler.get_imports(file_path)  # type: ignore
+        with self.entry_point() as handler:
+            imports = handler.get_file_imports(file_path)
 
             assert imports, "Any import was found"
             first_absolute_imports = imports.absolute_imports[0]

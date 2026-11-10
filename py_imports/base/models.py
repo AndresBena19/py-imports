@@ -1,21 +1,22 @@
-"""Base classes to define Imports behaviors"""
-from typing import Any, List, Union
+"""Base classes to define Imports behaviors."""
+
+import ast
+from typing import Any
 
 
 class ImportStatement:
-    """
-    Class that represent the most simple import statement in python
-    """
+    """Class that represent the most simple import statement in python."""
 
     def __init__(
-        self, line: int, children: List[str], statement: str, **kwargs: Any
+        self, line: int, children: list[str], statement: str, **kwargs: Any
     ) -> None:
-        """Initialize basic python import
+        """Initialize basic python import.
+
         Args:
             line: Line where the import was found in the file
             children: Packages or modules imports after the import statement
             statement: Plane text representation of the import found
-            **kwargs: Extra data passed
+            **kwargs: Extra data passed.
 
         Examples:
             import flask, dataclass, ...
@@ -25,35 +26,34 @@ class ImportStatement:
         self.statement = statement.strip()
 
         self.from_internal: bool = False
-        self.children_unused: List = kwargs.pop("children_unused", [])
-        self.outer_parent_node: Any = kwargs.pop("outer_parent_node", None)
-        self.in_inner_scope: bool = bool(self.outer_parent_node)
+        self.children_unused: list[str] = kwargs.pop("children_unused", [])
+        self.outer_parent_node: ast.AST | None = kwargs.pop("outer_parent_node", None)
+        self.in_inner_scope: bool = self.outer_parent_node is not None
 
         self.kwargs = kwargs
 
 
 class ImportFromStatement(ImportStatement):
-    """
-    Class that represent a import statement that use FROM in python
-    """
+    """Class that represent a import statement that use FROM in python."""
 
     def __init__(
         self,
         line: int,
-        children: List[str],
+        children: list[str],
         parent: str,
         statement: str,
         level: int = 0,
         **kwargs: Any,
     ) -> None:
-        """Initialize from statement python import
+        """Initialize from statement python import.
+
         Args:
             line:  Line where the import was found in the file
             children: Packages or modules imports after the import statement
             parent: Package or module  where the children was imported
             statement: Plane text representation of the import found
             level: Integer holding the level of the relative import.
-            **kwargs: Extra data passed
+            **kwargs: Extra data passed.
 
         Examples:
             from <parents> imports <children>
@@ -64,27 +64,26 @@ class ImportFromStatement(ImportStatement):
 
 
 class RelativeImportStatement(ImportFromStatement):
-    """
-    Class that represent a relative import statement in python
-    """
+    """Class that represent a relative import statement in python."""
 
     def __init__(
         self,
         line: int,
         parent: str,
-        children: List[str],
+        children: list[str],
         statement: str,
         level: int,
         **kwargs: Any,
     ) -> None:
-        """Initialize relative statement python import
+        """Initialize relative statement python import.
+
         Args:
             line:  Line where the import was found in the file
             children: Packages or modules imports after the import statement
             parent: Package or module  where the children was imported
             statement: Plane text representation of the import found
             level: Integer holding the level of the relative import.
-            **kwargs: Extra data passed
+            **kwargs: Extra data passed.
 
         Examples:
             from . import mixins
@@ -94,20 +93,19 @@ class RelativeImportStatement(ImportFromStatement):
 
 
 class AbsoluteImportStatement(ImportFromStatement):
-    """
-    Class that represent an absolute import statement in python
-    """
+    """Class that represent an absolute import statement in python."""
 
     def __init__(
-        self, line: int, parent: str, children: List[str], statement: str, **kwargs: Any
+        self, line: int, parent: str, children: list[str], statement: str, **kwargs: Any
     ):
-        """Initialize relative statement python import
+        """Initialize relative statement python import.
+
         Args:
             line:  Line where the import was found in the file
             children: Packages or modules imports after the import statement
             parent: Package or module  where the children was imported
             statement: Plane text representation of the import found
-            **kwargs: Extra data passed
+            **kwargs: Extra data passed.
 
         Examples:
             from py_dep import mixins
@@ -116,30 +114,27 @@ class AbsoluteImportStatement(ImportFromStatement):
         Notes:
             An absolute import by default has a level equals to 0
         """
-        self.level = 0
         super().__init__(line, children, parent, statement, **kwargs)
 
 
 class ImportsCollectionFile:
-    """
-    Class to collect the meta information about the imports in a file
-    """
+    """Class to collect the meta information about the imports in a file."""
 
     def __init__(self) -> None:
-        self.imports: List = []
-        self.relative_imports: List = []
-        self.absolute_imports: List = []
+        self.imports: list[ImportStatement] = []
+        self.relative_imports: list[RelativeImportStatement] = []
+        self.absolute_imports: list[AbsoluteImportStatement] = []
 
     def register_import_from(
         self,
         line: int,
-        children: List[str],
+        children: list[str],
         statement: str,
         level: int,
         parent: str,
         **kwargs: Any,
-    ) -> Union[AbsoluteImportStatement, RelativeImportStatement]:
-        """Register absolute or relative import
+    ) -> AbsoluteImportStatement | RelativeImportStatement:
+        """Register absolute or relative import.
 
         Notes:
             If the level of the current imports is equals to 0, that's mean that is a
@@ -148,7 +143,7 @@ class ImportsCollectionFile:
         Returns:
             The object that represent the relative or absolute import
         """
-        import_from: Union[AbsoluteImportStatement, RelativeImportStatement]
+        import_from: AbsoluteImportStatement | RelativeImportStatement
 
         if level > 0:
             import_from = RelativeImportStatement(
@@ -164,9 +159,9 @@ class ImportsCollectionFile:
         return import_from
 
     def register_import(
-        self, line: int, children: List[str], statement: str, **kwargs: Any
+        self, line: int, children: list[str], statement: str, **kwargs: Any
     ) -> ImportStatement:
-        """Register simple import"""
+        """Register simple import."""
         simple_import = ImportStatement(line, children, statement, **kwargs)
         self.imports.append(simple_import)
         return simple_import

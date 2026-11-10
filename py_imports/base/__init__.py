@@ -1,4 +1,5 @@
-"""Base schemas"""
+"""Base schemas."""
+
 from .models import ImportsCollectionFile
 
 
