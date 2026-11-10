@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Linting/formatting consolidated into `ruff` (replaces flake8, black, isort, pylint and bandit); mypy runs in strict mode.
 - GitHub Actions: a single `ci.yml` (lint + test matrix on Linux/macOS/Windows × 3.11–3.14 + Codecov) and a `release.yml` publishing via `pypa/gh-action-pypi-publish` (trusted publishing ready).
 - `statement` now holds the exact source of the import (whole multi-line import, without trailing comments) instead of only its first physical line.
-- Package ships a `py.typed` marker.
+- Package ships a `py.typed` marker and an MIT `LICENSE` file.
 
 ### Added
 - `PyImports.get_file_imports()` and `PyImports.get_dir_imports()` with precise return types.
