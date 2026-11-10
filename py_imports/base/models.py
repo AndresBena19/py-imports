@@ -27,10 +27,37 @@ class ImportStatement:
 
         self.from_internal: bool = False
         self.children_unused: list[str] = kwargs.pop("children_unused", [])
+        # ``as`` names, parallel to ``children`` (None when the child is not aliased)
+        self.aliases: list[str | None] = kwargs.pop("aliases", [None] * len(children))
+        # Nearest enclosing function/class node, None for module-level imports
         self.outer_parent_node: ast.AST | None = kwargs.pop("outer_parent_node", None)
+        # Dotted name of the enclosing functions/classes, e.g. "MyClass.method"
+        self.scope: str | None = kwargs.pop("scope", None)
         self.in_inner_scope: bool = self.outer_parent_node is not None
 
         self.kwargs = kwargs
+
+    @property
+    def kind(self) -> str:
+        """Kind of import statement: ``import``, ``absolute`` or ``relative``."""
+        return "import"
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-serializable representation of the import.
+
+        The ``outer_parent_node`` AST node is not included; ``scope`` carries its
+        dotted name instead.
+        """
+        return {
+            "kind": self.kind,
+            "line": self.line,
+            "statement": self.statement,
+            "children": list(self.children),
+            "aliases": list(self.aliases),
+            "children_unused": list(self.children_unused),
+            "in_inner_scope": self.in_inner_scope,
+            "scope": self.scope,
+        }
 
 
 class ImportFromStatement(ImportStatement):
@@ -61,6 +88,15 @@ class ImportFromStatement(ImportStatement):
         self.parent = parent
         self.level = level
         super().__init__(line, children, statement, **kwargs)
+
+    @property
+    def kind(self) -> str:
+        """Kind of import statement: ``absolute`` or ``relative``."""
+        return "relative" if self.level > 0 else "absolute"
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-serializable representation of the import."""
+        return {**super().to_dict(), "parent": self.parent, "level": self.level}
 
 
 class RelativeImportStatement(ImportFromStatement):
@@ -124,6 +160,14 @@ class ImportsCollectionFile:
         self.imports: list[ImportStatement] = []
         self.relative_imports: list[RelativeImportStatement] = []
         self.absolute_imports: list[AbsoluteImportStatement] = []
+
+    def to_dict(self) -> dict[str, list[dict[str, Any]]]:
+        """Return a JSON-serializable representation of the imports in the file."""
+        return {
+            "imports": [item.to_dict() for item in self.imports],
+            "absolute_imports": [item.to_dict() for item in self.absolute_imports],
+            "relative_imports": [item.to_dict() for item in self.relative_imports],
+        }
 
     def register_import_from(
         self,

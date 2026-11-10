@@ -234,27 +234,53 @@ standard_imports = collector_object.imports
   <summary>If the position of the import statement ...<code>in_inner_scope...</code></summary>
 
   - ### Imports in inner scopes
-    If some imports are located inside an inner scope, the import object will contain a boolean field
-    named `in_inner_scope` indicating that is located outside his default position (the top of the file or in the global scope),
-    also will be included an attribute named `outer_parent_node` that will contain the `AST` node, to allow the user get more information
-    about the data structure node parent that is around the import.
+    An import is in an inner scope when it is defined inside a **function or a class**. In that case
+    `in_inner_scope` is `True`, `outer_parent_node` holds the nearest enclosing `ast.FunctionDef`,
+    `ast.AsyncFunctionDef` or `ast.ClassDef` node, and `scope` holds its dotted name (e.g. `"MyClass.method"`).
+
+    Module-level guards such as `if TYPE_CHECKING:`, `try/except ImportError` or `if sys.version_info >= ...`
+    do **not** create an inner scope: those imports keep `in_inner_scope == False`.
 
      ```Python
-     def foo():
-        from pkg import moduleY, moduleZ
-     ...
+     class Service:
+         def run(self):
+             if ready:
+                 from pkg import moduleY, moduleZ
       ```
-    In this case the absolute import is located inside a function named `foo`.
+    In this case the absolute import is located inside the method `run` of the class `Service`.
 
     ```Python
     ...  # After introspect the file
 
     absolute_imports = imports_file.absolute_imports
     absolute_imports[0].in_inner_scope -> True
-
-    # it's possible to get the ast node parent with
-    absolute_imports[0].outer_parent_node -> ast.AST object
+    absolute_imports[0].scope -> "Service.run"
+    absolute_imports[0].outer_parent_node -> ast.FunctionDef (name="run")
+    ```
 </details>
+
+### Export the results as JSON
+
+Every import object and `ImportsCollectionFile` has a `to_dict()` method returning plain, JSON-serializable data
+(the AST node is replaced by its `scope` name). Aliases are available in `aliases`, parallel to `children`.
+
+```Python
+import json
+
+with PyImports() as manager:
+    imports_file = manager.get_file_imports("main.py")
+
+print(json.dumps(imports_file.to_dict(), indent=2))
+# {"imports": [{"kind": "import", "line": 1, "statement": "import numpy as np",
+#               "children": ["numpy"], "aliases": ["np"], "children_unused": [], ...}], ...}
+```
+
+### Scanning directories
+
+Directory scans walk sub-directories in sorted order and skip hidden directories (`.git`, `.venv`, `.tox`, ...),
+virtual environments (any directory with a `pyvenv.cfg`), `__pycache__`, `node_modules` and `site-packages`.
+Files that cannot be parsed (syntax errors, undecodable content) are skipped with a warning and listed in
+`manager.parse_errors`, so one broken file no longer aborts the whole scan. Parsing a single file still raises.
 
 ## Notes
 

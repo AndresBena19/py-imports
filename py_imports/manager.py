@@ -17,6 +17,23 @@ logger = logging.getLogger(__name__)
 
 StrPath = str | os.PathLike[str]
 
+#: Directory names never traversed during a directory scan. Hidden directories
+#: (``.git``, ``.venv``, ``.tox``...) and virtual environments (any directory
+#: containing a ``pyvenv.cfg``) are skipped as well.
+EXCLUDED_DIRS = frozenset({"__pycache__", "node_modules", "site-packages"})
+
+#: Errors that make a single file unparseable without aborting a directory scan.
+PARSE_ERRORS = (SyntaxError, ValueError, OSError)
+
+
+def _is_excluded_dir(root: str, name: str) -> bool:
+    """Whether a sub-directory must be skipped during a directory scan."""
+    return (
+        name.startswith(".")
+        or name in EXCLUDED_DIRS
+        or os.path.isfile(os.path.join(root, name, "pyvenv.cfg"))
+    )
+
 
 class PyImports(UnUsedImportMixin):
     """Parse and capture every import data statement in a directory, file.
@@ -29,10 +46,14 @@ class PyImports(UnUsedImportMixin):
         2. Parse imports in an specific local file
             with PyImports() as manager:
                 manager.get_imports(path=FILE_PATH)
+
+        Files that cannot be parsed during a directory scan (syntax errors,
+        undecodable content...) are skipped and reported in ``parse_errors``.
     """
 
     def __init__(self) -> None:
         self._imports: dict[str, ImportsCollectionFile] = {}
+        self._parse_errors: dict[str, Exception] = {}
 
     def __enter__(self) -> Self:
         return self
@@ -93,7 +114,13 @@ class PyImports(UnUsedImportMixin):
             if not path_file.endswith(".py"):
                 continue
             absolute_path = os.path.join(root, path_file)
-            imports_found[absolute_path] = self._process_file(absolute_path)
+            try:
+                imports_found[absolute_path] = self._process_file(absolute_path)
+            except PARSE_ERRORS as error:
+                logger.warning(
+                    "Skipping %s, it could not be parsed: %s", absolute_path, error
+                )
+                self._parse_errors[absolute_path] = error
         return imports_found
 
     def _process_file(self, path: str) -> ImportsCollectionFile:
@@ -110,14 +137,15 @@ class PyImports(UnUsedImportMixin):
         return file_imports
 
     def _process_dir(self, path_dir: str) -> dict[str, ImportsCollectionFile]:
-        """Parse every file found in the directory.
+        """Parse every file found in the directory, in a deterministic order.
 
         Args:
             path_dir: absolute directory path
         """
         imports: dict[str, ImportsCollectionFile] = {}
-        for root, _, files in os.walk(path_dir):
-            imports.update(self._process_py_files(files, root))
+        for root, dirs, files in os.walk(path_dir):
+            dirs[:] = sorted(name for name in dirs if not _is_excluded_dir(root, name))
+            imports.update(self._process_py_files(sorted(files), root))
         return imports
 
     def get_imports(
@@ -161,6 +189,11 @@ class PyImports(UnUsedImportMixin):
         if not os.path.isdir(path):
             raise NotADirectoryError(path)
         return self._process_dir(path)
+
+    @property
+    def parse_errors(self) -> dict[str, Exception]:
+        """Files skipped during directory scans because they could not be parsed."""
+        return self._parse_errors
 
     def imports_resume(self) -> dict[str, ImportsCollectionFile]:
         """Get all the imports parsed in the context."""
