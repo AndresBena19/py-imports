@@ -2,6 +2,7 @@
 
 from py_imports.base.models import (
     AbsoluteImportStatement,
+    Guard,
     ImportedName,
     ImportFromStatement,
     ImportsCollectionFile,
@@ -14,6 +15,7 @@ from py_imports.manager import PyImports
 
 __all__ = [
     "AbsoluteImportStatement",
+    "Guard",
     "ImportFromStatement",
     "ImportStatement",
     "ImportedName",

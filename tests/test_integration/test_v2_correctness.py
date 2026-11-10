@@ -164,6 +164,7 @@ np.array
             ],
             "in_inner_scope": False,
             "scope": None,
+            "guards": [],
         }
     ]
     assert data["relative_imports"][0] == {
@@ -175,6 +176,7 @@ np.array
         "names": [{"name": "User", "asname": "U", "unused": True}],
         "in_inner_scope": False,
         "scope": None,
+        "guards": [],
         "module": "models",
         "level": 1,
     }

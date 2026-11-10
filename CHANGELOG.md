@@ -21,6 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `outer_parent_node` is excluded from equality and `repr`, so statements compare and hash by value.
 
 ### Added
+- Guard context: every import has `guards`, the enclosing `if`/`try`/`with suppress(...)`/`match`/loop blocks,
+  each a `Guard(kind, branch, line, condition, category)`. `category` recognizes `if TYPE_CHECKING:` (and its `else`
+  / `not TYPE_CHECKING`), optional imports and `except ImportError` fallbacks, and Python version / platform checks.
+  Shortcut properties: `is_conditional`, `is_type_checking_only`, `is_optional`, `is_fallback`,
+  `is_version_dependent`, `is_platform_dependent`. `to_dict()` includes `guards`.
 - `end_line` and `column` on every import statement.
 - `ImportsCollectionFile.all_imports`: every statement in source order.
 - `ImportedName.bound_name`: the name bound in the module (`import a.b` binds `a`).
