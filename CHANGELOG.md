@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Released]
 
+## [2.1.0] - 10 Nov 2026
+
+### Fixed
+- `in_inner_scope` was `True` for imports under module-level `if`/`try` blocks (e.g. `if TYPE_CHECKING:`,
+  `try/except ImportError`, `if sys.version_info`). Only imports inside a function or class are now inner-scope,
+  and `outer_parent_node` is the nearest enclosing function/class node instead of the immediate parent node.
+- A single unparseable file aborted a whole directory scan. Such files are now skipped with a warning and
+  reported in `PyImports.parse_errors`. Parsing a single file still raises.
+- Directory scans descended into `.git`, `.venv`, virtual environments, `__pycache__`, `node_modules` and
+  `site-packages`, and returned files in filesystem order. Those directories are skipped and the order is sorted.
+- The analyzer no longer mutates the caller's AST (it used to set a `parent` attribute on every node).
+
+### Added
+- `to_dict()` on every import object and on `ImportsCollectionFile`, returning JSON-serializable data.
+- `aliases` (the `as` names, parallel to `children`), `scope` (dotted name of the enclosing function/class)
+  and `kind` (`"import"`, `"absolute"` or `"relative"`) on every import object.
+
 ## [2.0.0] - 10 Nov 2026
 
 ### Changed
