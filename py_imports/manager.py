@@ -1,6 +1,7 @@
 """Core feature to get imports."""
 
 import ast
+import importlib.util
 import logging
 import os
 import tokenize
@@ -92,11 +93,35 @@ class PyImports(UnUsedImportMixin):
         """
         with tokenize.open(path_file) as file:
             raw_content = file.read()
+        return PyImports.get_source_imports(raw_content, filename=os.fspath(path_file))
 
-        tree = ast.parse(raw_content, filename=os.fspath(path_file))
-        analyzer = AstImportAnalyzer(
-            raw_content.splitlines(keepends=True), raw_content, tree
-        )
+    @staticmethod
+    def get_source_imports(
+        source: str | bytes, filename: str = "<unknown>"
+    ) -> ImportsCollectionFile:
+        """Parse Python source code (not a file) to get its imports.
+
+        Useful for code that does not live on disk: editor buffers, generated
+        code, code-indexing or LLM pipelines, files read from a git object...
+        The result is not recorded in ``imports_resume()``.
+
+        Args:
+            source: Python source code. ``bytes`` are decoded following PEP 263
+                (coding cookie / BOM), defaulting to UTF-8, like files are.
+                Newlines are normalized to LF (as when reading files), so
+                ``statement`` is the same whatever the input type.
+            filename: Name used in ``SyntaxError`` messages.
+
+        Raises:
+            SyntaxError: if the source is not valid Python, or ``bytes`` cannot be
+                decoded with their declared (or the default UTF-8) encoding.
+        """
+        if isinstance(source, bytes):
+            source = importlib.util.decode_source(source)  # also normalizes newlines
+        else:
+            source = source.replace("\r\n", "\n").replace("\r", "\n")
+        tree = ast.parse(source, filename=filename)
+        analyzer = AstImportAnalyzer(source.splitlines(keepends=True), source, tree)
         analyzer.visit(tree)
         return analyzer.imports_metadata
 

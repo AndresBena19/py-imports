@@ -331,6 +331,25 @@ print(json.dumps(imports_file.to_dict(), indent=2))
 #  "absolute_imports": [...], "relative_imports": [...]}
 ```
 
+### Parsing source code that is not a file
+
+`PyImports.get_source_imports(source, filename="<unknown>")` takes the source itself, for code that does not live
+on disk: editor buffers, generated code, code-indexing or LLM pipelines, a file read from a git object... It returns
+the same `ImportsCollectionFile` as `get_file_imports`, without touching the filesystem or `imports_resume()`.
+
+```Python
+from py_imports import PyImports
+
+imports = PyImports.get_source_imports("import numpy as np\nfrom .models import User\n")
+imports.imports[0].aliases         -> ['np']
+imports.relative_imports[0].module -> 'models'
+
+# bytes are decoded like files (coding cookie / BOM, UTF-8 by default)
+PyImports.get_source_imports(blob_bytes, filename="src/app.py")
+```
+
+Newlines are normalized like when reading a file. Invalid source raises `SyntaxError` (with `filename` in it).
+
 ### Scanning directories
 
 Directory scans walk sub-directories in sorted order and skip hidden directories (`.git`, `.venv`, `.tox`, ...),
