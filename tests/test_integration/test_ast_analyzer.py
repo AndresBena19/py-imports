@@ -1,25 +1,23 @@
-"""Integration test cases to validate the properly parse of python imports"""
+"""Integration test cases to validate the properly parse of python imports."""
+
 import ast
-from typing import Callable
 
 from py_imports.ast_analyzers import AstImportAnalyzer
 from py_imports.manager import PyImports
+from tests.conftest import FileFactory
 
 
 class TestAstImportAnalyzer:
-    """
-    Test cases to validate AstImportAnalyzer behavior
-    """
+    """Test cases to validate AstImportAnalyzer behavior."""
 
     entry_point = PyImports
     ast_analyzer = AstImportAnalyzer
 
     def test_properly_parse_and_object_generation_with_the_parse_imports(
         self,
-        set_up_file: Callable,
+        set_up_file: FileFactory,
     ) -> None:
-        """
-        Validate if the analyzer parser, register and generate correctly the imports found
+        """Validate the analyzer parses, registers and generates the imports found.
 
         Expected results:
             * The import statement must be equal to the content in the file (line 1)
@@ -30,7 +28,7 @@ class TestAstImportAnalyzer:
         content_file = """from ... import request"""
         file_path = set_up_file(content_file)
 
-        with open(file_path, "r", encoding="utf8") as file:
+        with open(file_path, encoding="utf8") as file:
             data = file.readlines()
             file.seek(0)
             raw_content = file.read()

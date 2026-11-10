@@ -1,26 +1,25 @@
-"""General conftest"""
+"""General conftest."""
+
 import os
-from typing import Callable, List, Tuple
+from collections.abc import Callable
+from pathlib import Path
 
 import pytest
 
 
-# Disable because pylint assume that the fixture as a parameters are a redefinition
-# pylint: disable=redefined-outer-name
+FileFactory = Callable[..., str]
 
 
 @pytest.fixture
-def set_up_file(tmp_path: str) -> Callable[[str, str], str]:
-    """
-    Dynamic fixture to create a tmp file to parse
+def set_up_file(tmp_path: Path) -> FileFactory:
+    """Dynamic fixture to create a tmp file to parse.
 
     Args:
         tmp_path: temporal path
     """
 
     def create_file(content: str, destine_path: str = "") -> str:
-        """
-         Create a dummy file with the context provided in imports
+        """Create a dummy file with the context provided in imports.
 
         Args:
             destine_path: Optional destine path to save the file
@@ -42,19 +41,17 @@ def set_up_file(tmp_path: str) -> Callable[[str, str], str]:
 
 
 @pytest.fixture
-def py_package(tmpdir: str, set_up_file: Callable[[str, str], str]) -> Tuple[str, List]:
-    """
-    Fixture to create a temporal python package
+def py_package(tmp_path: Path, set_up_file: FileFactory) -> tuple[str, list[str]]:
+    """Fixture to create a temporal python package.
 
     Args:
         set_up_file: Dynamic fixture to create files
-        tmpdir: temporal directory path
+        tmp_path: temporal directory path
     """
-
-    first_file = set_up_file("", os.path.join(tmpdir, "__init__.py"))
-    second_file = set_up_file("""import django""", os.path.join(tmpdir, "module1.py"))
+    first_file = set_up_file("", os.path.join(tmp_path, "__init__.py"))
+    second_file = set_up_file("""import django""", os.path.join(tmp_path, "module1.py"))
     third_file = set_up_file(
-        """import flask\nfrom module1 import django""", os.path.join(tmpdir, "main.py")
+        """import flask\nfrom module1 import django""", os.path.join(tmp_path, "main.py")
     )
 
-    return tmpdir, [first_file, second_file, third_file]
+    return str(tmp_path), [first_file, second_file, third_file]
