@@ -1,8 +1,15 @@
 """AST classes to parse py files."""
 
 import ast
+from typing import Any
 
-from py_imports.base import ImportsCollectionFile
+from py_imports.base.models import (
+    AbsoluteImportStatement,
+    ImportedName,
+    ImportsCollectionFile,
+    ImportStatement,
+    RelativeImportStatement,
+)
 from py_imports.mixins import UnUsedImportMixin
 
 
@@ -54,15 +61,24 @@ class AstImportAnalyzer(UnUsedImportMixin, ast.NodeVisitor):
         segment = ast.get_source_segment(self.raw_content, node)
         if segment is not None:
             return segment
-        return self.file_content[node.lineno - 1]
+        return self.file_content[node.lineno - 1].strip()
 
-    def _scope_kwargs(self, node: ast.Import | ast.ImportFrom) -> dict[str, object]:
-        """Metadata shared by every kind of import statement."""
+    def _common_fields(self, node: ast.Import | ast.ImportFrom) -> dict[str, Any]:
+        """Fields shared by every kind of import statement."""
+        unused = self._unused_imports.get(node.lineno, [])
         return {
-            "aliases": [alias.asname for alias in node.names],
-            "children_unused": self._unused_imports.get(node.lineno, []),
-            "outer_parent_node": self._scopes[-1] if self._scopes else None,
+            "line": node.lineno,
+            "end_line": node.end_lineno,
+            "column": node.col_offset,
+            "statement": self._statement(node),
+            "names": tuple(
+                ImportedName(
+                    name=alias.name, asname=alias.asname, unused=alias.name in unused
+                )
+                for alias in node.names
+            ),
             "scope": ".".join(scope.name for scope in self._scopes) or None,
+            "outer_parent_node": self._scopes[-1] if self._scopes else None,
         }
 
     def visit_Import(self, node: ast.Import) -> None:
@@ -74,12 +90,7 @@ class AstImportAnalyzer(UnUsedImportMixin, ast.NodeVisitor):
         Examples:
             import x, y, z
         """
-        self._imports_collector.register_import(
-            line=node.lineno,
-            children=[alias.name for alias in node.names],
-            statement=self._statement(node),
-            **self._scope_kwargs(node),
-        )
+        self._imports_collector.add(ImportStatement(**self._common_fields(node)))
         self.generic_visit(node)
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
@@ -97,13 +108,13 @@ class AstImportAnalyzer(UnUsedImportMixin, ast.NodeVisitor):
             it was a absolute or relative import and how many packages traversed
             to import the object
         """
-        self._imports_collector.register_import_from(
-            line=node.lineno,
-            children=[alias.name for alias in node.names],
-            parent=node.module or "",
-            level=node.level,
-            statement=self._statement(node),
-            **self._scope_kwargs(node),
+        statement_class = (
+            RelativeImportStatement if node.level > 0 else AbsoluteImportStatement
+        )
+        self._imports_collector.add(
+            statement_class(
+                **self._common_fields(node), module=node.module or "", level=node.level
+            )
         )
         self.generic_visit(node)
 

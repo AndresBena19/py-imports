@@ -259,20 +259,45 @@ standard_imports = collector_object.imports
     ```
 </details>
 
-### Export the results as JSON
+### Typed data model
 
-Every import object and `ImportsCollectionFile` has a `to_dict()` method returning plain, JSON-serializable data
-(the AST node is replaced by its `scope` name). Aliases are available in `aliases`, parallel to `children`.
+Every import is an immutable (frozen, slotted) dataclass, also importable from the package root:
+
+| Class | Statement | Extra fields |
+|---|---|---|
+| `ImportStatement` | `import a, b as c` | |
+| `AbsoluteImportStatement` | `from a.b import c` | `module`, `level == 0` |
+| `RelativeImportStatement` | `from ..a import b` | `module`, `level > 0` |
+
+Common fields: `line`, `end_line`, `column`, `statement`, `names`, `scope`, `outer_parent_node`.
+Each entry of `names` is an `ImportedName(name, asname, unused)`. The previous attributes are still available as
+read-only properties: `children`, `aliases`, `children_unused`, `in_inner_scope`, `kind` and `parent` (alias of `module`).
 
 ```Python
-import json
+from py_imports import PyImports
 
 with PyImports() as manager:
     imports_file = manager.get_file_imports("main.py")
 
+for statement in imports_file.all_imports:  # every import, in source order
+    for imported in statement.names:
+        print(statement.kind, statement.line, imported.name, imported.asname, imported.unused)
+```
+
+### Export the results as JSON
+
+Every import object and `ImportsCollectionFile` has a `to_dict()` method returning plain, JSON-serializable data
+(the AST node is replaced by its `scope` name).
+
+```Python
+import json
+
 print(json.dumps(imports_file.to_dict(), indent=2))
-# {"imports": [{"kind": "import", "line": 1, "statement": "import numpy as np",
-#               "children": ["numpy"], "aliases": ["np"], "children_unused": [], ...}], ...}
+# {"imports": [{"kind": "import", "line": 1, "end_line": 1, "column": 0,
+#               "statement": "import numpy as np",
+#               "names": [{"name": "numpy", "asname": "np", "unused": false}],
+#               "in_inner_scope": false, "scope": null}],
+#  "absolute_imports": [...], "relative_imports": [...]}
 ```
 
 ### Scanning directories

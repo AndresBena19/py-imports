@@ -1,165 +1,178 @@
-"""Base classes to define Imports behaviors."""
+"""Typed data model describing the imports found in a Python file.
+
+Every import class is an immutable (frozen, slotted) dataclass with a
+keyword-only constructor. ``to_dict()`` returns plain JSON-serializable data.
+"""
 
 import ast
-from typing import Any
+from dataclasses import dataclass, field
+from typing import Any, Literal
 
 
-class ImportStatement:
-    """Class that represent the most simple import statement in python."""
+ImportKind = Literal["import", "absolute", "relative"]
 
-    def __init__(
-        self, line: int, children: list[str], statement: str, **kwargs: Any
-    ) -> None:
-        """Initialize basic python import.
 
-        Args:
-            line: Line where the import was found in the file
-            children: Packages or modules imports after the import statement
-            statement: Plane text representation of the import found
-            **kwargs: Extra data passed.
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ImportedName:
+    """One name imported by an import statement.
 
-        Examples:
-            import flask, dataclass, ...
-        """
-        self.line = line
-        self.children = children
-        self.statement = statement.strip()
+    Examples:
+        ``import numpy as np``      -> ImportedName(name="numpy", asname="np")
+        ``from os import path``     -> ImportedName(name="path")
+        ``from typing import *``    -> ImportedName(name="*")
+    """
 
-        self.from_internal: bool = False
-        self.children_unused: list[str] = kwargs.pop("children_unused", [])
-        # ``as`` names, parallel to ``children`` (None when the child is not aliased)
-        self.aliases: list[str | None] = kwargs.pop("aliases", [None] * len(children))
-        # Nearest enclosing function/class node, None for module-level imports
-        self.outer_parent_node: ast.AST | None = kwargs.pop("outer_parent_node", None)
-        # Dotted name of the enclosing functions/classes, e.g. "MyClass.method"
-        self.scope: str | None = kwargs.pop("scope", None)
-        self.in_inner_scope: bool = self.outer_parent_node is not None
-
-        self.kwargs = kwargs
+    name: str
+    asname: str | None = None
+    unused: bool = False
 
     @property
-    def kind(self) -> str:
-        """Kind of import statement: ``import``, ``absolute`` or ``relative``."""
-        return "import"
+    def bound_name(self) -> str:
+        """Name bound in the importing module (``import a.b`` binds ``a``)."""
+        if self.asname:
+            return self.asname
+        return self.name.split(".", 1)[0]
 
     def to_dict(self) -> dict[str, Any]:
-        """Return a JSON-serializable representation of the import.
+        """Return a JSON-serializable representation."""
+        return {"name": self.name, "asname": self.asname, "unused": self.unused}
 
-        The ``outer_parent_node`` AST node is not included; ``scope`` carries its
-        dotted name instead.
-        """
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ImportStatement:
+    """An ``import x, y as z`` statement.
+
+    Attributes:
+        line: First line of the statement (1-based).
+        statement: Exact source text of the statement.
+        names: The names imported by the statement, in source order.
+        end_line: Last line of the statement (differs for multi-line imports).
+        column: 0-based column where the statement starts.
+        scope: Dotted name of the enclosing functions/classes (e.g.
+            ``"Service.run"``), ``None`` for module-level imports.
+        outer_parent_node: Nearest enclosing ``FunctionDef``/``AsyncFunctionDef``/
+            ``ClassDef`` node, ``None`` for module-level imports. Excluded from
+            equality, ``repr`` and ``to_dict()``.
+    """
+
+    line: int
+    statement: str
+    names: tuple[ImportedName, ...] = ()
+    end_line: int | None = None
+    column: int = 0
+    scope: str | None = None
+    outer_parent_node: ast.AST | None = field(default=None, repr=False, compare=False)
+
+    @property
+    def kind(self) -> ImportKind:
+        """Kind of import statement."""
+        return "import"
+
+    @property
+    def in_inner_scope(self) -> bool:
+        """Whether the import is defined inside a function or a class."""
+        return self.scope is not None or self.outer_parent_node is not None
+
+    @property
+    def children(self) -> list[str]:
+        """Imported names, as written in the statement."""
+        return [item.name for item in self.names]
+
+    @property
+    def aliases(self) -> list[str | None]:
+        """``as`` names, parallel to ``children`` (``None`` when not aliased)."""
+        return [item.asname for item in self.names]
+
+    @property
+    def children_unused(self) -> list[str]:
+        """Imported names that are never used in the file."""
+        return [item.name for item in self.names if item.unused]
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-serializable representation of the import."""
         return {
             "kind": self.kind,
             "line": self.line,
+            "end_line": self.end_line,
+            "column": self.column,
             "statement": self.statement,
-            "children": list(self.children),
-            "aliases": list(self.aliases),
-            "children_unused": list(self.children_unused),
+            "names": [item.to_dict() for item in self.names],
             "in_inner_scope": self.in_inner_scope,
             "scope": self.scope,
         }
 
 
+@dataclass(frozen=True, slots=True, kw_only=True)
 class ImportFromStatement(ImportStatement):
-    """Class that represent a import statement that use FROM in python."""
+    """A ``from module import x`` statement.
 
-    def __init__(
-        self,
-        line: int,
-        children: list[str],
-        parent: str,
-        statement: str,
-        level: int = 0,
-        **kwargs: Any,
-    ) -> None:
-        """Initialize from statement python import.
+    Attributes:
+        module: Module after ``from`` without the leading dots (``""`` for
+            ``from . import x``).
+        level: Number of leading dots; ``0`` for absolute imports.
+    """
 
-        Args:
-            line:  Line where the import was found in the file
-            children: Packages or modules imports after the import statement
-            parent: Package or module  where the children was imported
-            statement: Plane text representation of the import found
-            level: Integer holding the level of the relative import.
-            **kwargs: Extra data passed.
-
-        Examples:
-            from <parents> imports <children>
-        """
-        self.parent = parent
-        self.level = level
-        super().__init__(line, children, statement, **kwargs)
+    module: str = ""
+    level: int = 0
 
     @property
-    def kind(self) -> str:
+    def kind(self) -> ImportKind:
         """Kind of import statement: ``absolute`` or ``relative``."""
         return "relative" if self.level > 0 else "absolute"
 
+    @property
+    def parent(self) -> str:
+        """Alias of ``module`` kept for backwards compatibility."""
+        return self.module
+
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable representation of the import."""
-        return {**super().to_dict(), "parent": self.parent, "level": self.level}
+        return {
+            **ImportStatement.to_dict(self),
+            "module": self.module,
+            "level": self.level,
+        }
 
 
+@dataclass(frozen=True, slots=True, kw_only=True)
 class RelativeImportStatement(ImportFromStatement):
-    """Class that represent a relative import statement in python."""
-
-    def __init__(
-        self,
-        line: int,
-        parent: str,
-        children: list[str],
-        statement: str,
-        level: int,
-        **kwargs: Any,
-    ) -> None:
-        """Initialize relative statement python import.
-
-        Args:
-            line:  Line where the import was found in the file
-            children: Packages or modules imports after the import statement
-            parent: Package or module  where the children was imported
-            statement: Plane text representation of the import found
-            level: Integer holding the level of the relative import.
-            **kwargs: Extra data passed.
-
-        Examples:
-            from . import mixins
-            from .mixins import UnUsedImportMixin
-        """
-        super().__init__(line, children, parent, statement, level, **kwargs)
+    """A relative import, e.g. ``from .models import User`` (``level > 0``)."""
 
 
+@dataclass(frozen=True, slots=True, kw_only=True)
 class AbsoluteImportStatement(ImportFromStatement):
-    """Class that represent an absolute import statement in python."""
-
-    def __init__(
-        self, line: int, parent: str, children: list[str], statement: str, **kwargs: Any
-    ):
-        """Initialize relative statement python import.
-
-        Args:
-            line:  Line where the import was found in the file
-            children: Packages or modules imports after the import statement
-            parent: Package or module  where the children was imported
-            statement: Plane text representation of the import found
-            **kwargs: Extra data passed.
-
-        Examples:
-            from py_dep import mixins
-            from mixins import UnUsedImportMixin
-
-        Notes:
-            An absolute import by default has a level equals to 0
-        """
-        super().__init__(line, children, parent, statement, **kwargs)
+    """An absolute from-import, e.g. ``from os import path`` (``level == 0``)."""
 
 
+AnyImport = ImportStatement | AbsoluteImportStatement | RelativeImportStatement
+
+
+@dataclass(slots=True)
 class ImportsCollectionFile:
-    """Class to collect the meta information about the imports in a file."""
+    """The imports found in a file, grouped by kind."""
 
-    def __init__(self) -> None:
-        self.imports: list[ImportStatement] = []
-        self.relative_imports: list[RelativeImportStatement] = []
-        self.absolute_imports: list[AbsoluteImportStatement] = []
+    imports: list[ImportStatement] = field(default_factory=list)
+    absolute_imports: list[AbsoluteImportStatement] = field(default_factory=list)
+    relative_imports: list[RelativeImportStatement] = field(default_factory=list)
+
+    def add(self, statement: AnyImport) -> None:
+        """Add an import statement to the matching group."""
+        if isinstance(statement, RelativeImportStatement):
+            self.relative_imports.append(statement)
+        elif isinstance(statement, AbsoluteImportStatement):
+            self.absolute_imports.append(statement)
+        else:
+            self.imports.append(statement)
+
+    @property
+    def all_imports(self) -> list[AnyImport]:
+        """Every import statement in the file, in source order."""
+        statements: list[AnyImport] = [
+            *self.imports,
+            *self.absolute_imports,
+            *self.relative_imports,
+        ]
+        return sorted(statements, key=lambda item: (item.line, item.column))
 
     def to_dict(self) -> dict[str, list[dict[str, Any]]]:
         """Return a JSON-serializable representation of the imports in the file."""
@@ -168,44 +181,3 @@ class ImportsCollectionFile:
             "absolute_imports": [item.to_dict() for item in self.absolute_imports],
             "relative_imports": [item.to_dict() for item in self.relative_imports],
         }
-
-    def register_import_from(
-        self,
-        line: int,
-        children: list[str],
-        statement: str,
-        level: int,
-        parent: str,
-        **kwargs: Any,
-    ) -> AbsoluteImportStatement | RelativeImportStatement:
-        """Register absolute or relative import.
-
-        Notes:
-            If the level of the current imports is equals to 0, that's mean that is a
-            absolute import otherwise is a relative import
-
-        Returns:
-            The object that represent the relative or absolute import
-        """
-        import_from: AbsoluteImportStatement | RelativeImportStatement
-
-        if level > 0:
-            import_from = RelativeImportStatement(
-                line, parent, children, statement, level, **kwargs
-            )
-            self.relative_imports.append(import_from)
-        else:
-            import_from = AbsoluteImportStatement(
-                line, parent, children, statement, **kwargs
-            )
-            self.absolute_imports.append(import_from)
-
-        return import_from
-
-    def register_import(
-        self, line: int, children: list[str], statement: str, **kwargs: Any
-    ) -> ImportStatement:
-        """Register simple import."""
-        simple_import = ImportStatement(line, children, statement, **kwargs)
-        self.imports.append(simple_import)
-        return simple_import
