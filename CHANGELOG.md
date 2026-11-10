@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - targets 3.0.0
+
+### Changed
+- **Breaking:** import models are frozen, slotted dataclasses with keyword-only constructors
+  (`ImportStatement`, `ImportFromStatement`, `AbsoluteImportStatement`, `RelativeImportStatement`). This removes the
+  inconsistent positional argument order between `ImportFromStatement` and its subclasses.
+- **Breaking:** imported names are `ImportedName(name, asname, unused)` records in `names`. `children`, `aliases`
+  and `children_unused` remain as read-only properties derived from `names`.
+- **Breaking:** `ImportFromStatement.parent` is now the `module` field (`parent` remains as a read-only alias).
+- **Breaking:** `to_dict()` schema now uses `names` (list of `{name, asname, unused}`) and `module`, and adds
+  `end_line` and `column`.
+- **Breaking:** `ImportsCollectionFile.register_import()` / `register_import_from()` are replaced by `add()`.
+- **Breaking:** removed the unused `from_internal` attribute and the catch-all `kwargs`.
+- `outer_parent_node` is excluded from equality and `repr`, so statements compare and hash by value.
+
+### Added
+- `end_line` and `column` on every import statement.
+- `ImportsCollectionFile.all_imports`: every statement in source order.
+- `ImportedName.bound_name`: the name bound in the module (`import a.b` binds `a`).
+- Public API exported from the package root: `from py_imports import PyImports, ImportStatement, ...`.
+
 ## [Released]
 
 ## [2.1.0] - 10 Nov 2026

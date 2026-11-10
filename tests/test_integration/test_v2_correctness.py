@@ -155,10 +155,13 @@ np.array
         {
             "kind": "import",
             "line": 1,
+            "end_line": 1,
+            "column": 0,
             "statement": "import numpy as np, os",
-            "children": ["numpy", "os"],
-            "aliases": ["np", None],
-            "children_unused": ["os"],
+            "names": [
+                {"name": "numpy", "asname": "np", "unused": False},
+                {"name": "os", "asname": None, "unused": True},
+            ],
             "in_inner_scope": False,
             "scope": None,
         }
@@ -166,13 +169,13 @@ np.array
     assert data["relative_imports"][0] == {
         "kind": "relative",
         "line": 2,
+        "end_line": 2,
+        "column": 0,
         "statement": "from .models import User as U",
-        "children": ["User"],
-        "aliases": ["U"],
-        "children_unused": ["User"],
+        "names": [{"name": "User", "asname": "U", "unused": True}],
         "in_inner_scope": False,
         "scope": None,
-        "parent": "models",
+        "module": "models",
         "level": 1,
     }
     assert data["absolute_imports"][0]["kind"] == "absolute"
